@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.env
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+.DS_Store
+
+# Kubernetes secrets (NON committare mai i secret reali)
+k8s/**/secret.yaml
+
+# Script temporanei di sviluppo/debug
+backend/check_db.py
+backend/fix_payer_enum.py
+backend/backend_logs.txt
+
+# Cartella temporanea
+frontend-temp/
+
+# Claude Code
+.claude/
+
+# IDE
+.idea/
+.vscode/
+*.swp
