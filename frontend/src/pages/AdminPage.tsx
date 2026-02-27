@@ -629,86 +629,6 @@ function AdminPage() {
                 </Paper>
 
                 <Paper sx={{ p: 2, mb: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>Anticipi Personali</Typography>
-                  <Grid container spacing={2} sx={{ mb: 2 }}>
-                    <Grid item xs={6}>
-                      <Box sx={{ p: 2, bgcolor: 'primary.light', borderRadius: 1, color: 'white' }}>
-                        <Typography variant="body2">Marco ha anticipato:</Typography>
-                        <Typography variant="h6">€ {statistics.marco_advances.toFixed(2)}</Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Box sx={{ p: 2, bgcolor: 'secondary.light', borderRadius: 1, color: 'white' }}>
-                        <Typography variant="body2">Anna ha anticipato:</Typography>
-                        <Typography variant="h6">€ {statistics.anna_advances.toFixed(2)}</Typography>
-                      </Box>
-                    </Grid>
-                  </Grid>
-
-                  {statistics.marco_advance_details.length > 0 && (
-                    <>
-                      <Typography variant="subtitle2" sx={{ mt: 2 }}>Dettaglio Anticipi Marco</Typography>
-                      <TableContainer>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Data</TableCell>
-                              <TableCell>Descrizione</TableCell>
-                              <TableCell>Categoria</TableCell>
-                              <TableCell align="right">Importo</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {statistics.marco_advance_details.map((detail) => (
-                              <TableRow key={detail.id}>
-                                <TableCell>{new Date(detail.date).toLocaleDateString('it-IT')}</TableCell>
-                                <TableCell>{detail.description}</TableCell>
-                                <TableCell>{detail.category_name}</TableCell>
-                                <TableCell align="right">€ {detail.amount.toFixed(2)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </>
-                  )}
-
-                  {statistics.anna_advance_details.length > 0 && (
-                    <>
-                      <Typography variant="subtitle2" sx={{ mt: 3 }}>Dettaglio Anticipi Anna</Typography>
-                      <TableContainer>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Data</TableCell>
-                              <TableCell>Descrizione</TableCell>
-                              <TableCell>Categoria</TableCell>
-                              <TableCell align="right">Importo</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {statistics.anna_advance_details.map((detail) => (
-                              <TableRow key={detail.id}>
-                                <TableCell>{new Date(detail.date).toLocaleDateString('it-IT')}</TableCell>
-                                <TableCell>{detail.description}</TableCell>
-                                <TableCell>{detail.category_name}</TableCell>
-                                <TableCell align="right">€ {detail.amount.toFixed(2)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </>
-                  )}
-
-                  {statistics.marco_advance_details.length === 0 && statistics.anna_advance_details.length === 0 && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                      Nessun anticipo personale in questo periodo.
-                    </Typography>
-                  )}
-                </Paper>
-
-                <Paper sx={{ p: 2, mb: 2 }}>
                   <Typography variant="subtitle1" gutterBottom>Riepilogo Mese Corrente (Home)</Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={12} md={4}>
@@ -724,6 +644,31 @@ function AdminPage() {
                       <Typography variant="h6">€ {statistics.current_month_summary.balance.toFixed(2)}</Typography>
                     </Grid>
                   </Grid>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Quanto versare il mese successivo (al netto degli anticipi mensili)
+                    </Typography>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Persona</TableCell>
+                            <TableCell align="right">Anticipato nel mese</TableCell>
+                            <TableCell align="right">Da versare mese successivo</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {Object.entries(statistics.current_month_summary.person_contributions).map(([name, contribution]) => (
+                            <TableRow key={name}>
+                              <TableCell>{name}</TableCell>
+                              <TableCell align="right">€ {contribution.paid.toFixed(2)}</TableCell>
+                              <TableCell align="right">€ {contribution.needs_to_pay.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
                 </Paper>
 
                 <Paper sx={{ p: 2, mb: 2 }}>
@@ -746,10 +691,17 @@ function AdminPage() {
                       <Typography variant="h6">€ {statistics.large_advances_balance.difference.toFixed(2)}</Typography>
                     </Grid>
                   </Grid>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    {statistics.large_advances_balance.difference > 0
+                      ? `Anna deve riequilibrare € ${statistics.large_advances_balance.difference.toFixed(2)} verso Marco.`
+                      : statistics.large_advances_balance.difference < 0
+                        ? `Marco deve riequilibrare € ${Math.abs(statistics.large_advances_balance.difference).toFixed(2)} verso Anna.`
+                        : 'Bilancio grossi anticipi in pari.'}
+                  </Typography>
                 </Paper>
 
                 <Paper sx={{ p: 2, mb: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>Nuove Grosse Spese/Investimenti nel Periodo</Typography>
+                  <Typography variant="subtitle1" gutterBottom>Segnalazione Grosse Spese/Investimenti nel Periodo</Typography>
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     Nuove entry: <strong>{statistics.new_major_expenses_count}</strong> | Totale: <strong>€ {statistics.new_major_expenses_total.toFixed(2)}</strong>
                   </Typography>
@@ -763,18 +715,16 @@ function AdminPage() {
                             <TableCell>Descrizione</TableCell>
                             <TableCell>Categoria</TableCell>
                             <TableCell>Persona</TableCell>
-                            <TableCell>Note</TableCell>
                             <TableCell align="right">Importo</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {statistics.major_expenses.map((exp) => (
+                          {statistics.major_expenses.slice(0, 5).map((exp) => (
                             <TableRow key={exp.id}>
                               <TableCell>{new Date(exp.date).toLocaleDateString('it-IT')}</TableCell>
                               <TableCell>{exp.description}</TableCell>
                               <TableCell>{exp.category}</TableCell>
                               <TableCell>{exp.person.name}</TableCell>
-                              <TableCell>{exp.notes || '-'}</TableCell>
                               <TableCell align="right">€ {exp.amount.toFixed(2)}</TableCell>
                             </TableRow>
                           ))}

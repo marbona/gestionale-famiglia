@@ -56,6 +56,14 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
             "Spese per Categoria"
         )
 
+    diff = statistics.large_advances_balance.difference
+    if diff > 0:
+        large_advances_note = f"Anna deve riequilibrare € {abs(diff):.2f} verso Marco."
+    elif diff < 0:
+        large_advances_note = f"Marco deve riequilibrare € {abs(diff):.2f} verso Anna."
+    else:
+        large_advances_note = "Bilancio in pari."
+
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -129,7 +137,7 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
         </div>
 
         <div class="card">
-            <h2>Riepilogo Generale</h2>
+            <h2>Riepilogo Spese del Periodo Selezionato</h2>
             <div class="summary-grid">
                 <div class="summary-item">
                     <strong>Totale Spese:</strong><br>
@@ -147,7 +155,7 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
         </div>
 
         <div class="card">
-            <h2>Riepilogo Mese Corrente (Home)</h2>
+            <h2>Contabilita Mensile (Home Page)</h2>
             <p class="muted">
                 Mese: {statistics.current_month_summary.month:02d}/{statistics.current_month_summary.year}
             </p>
@@ -167,10 +175,10 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
             </div>
         </div>
 
-        {'<div class="card"><h2>Grafico Spese per Categoria</h2><div class="chart-container"><img src="' + chart_data_url + '" alt="Grafico Spese"></div></div>' if chart_data_url else ''}
+        {'<div class="card"><h2>Grafico Spese per Categoria (Periodo Selezionato)</h2><div class="chart-container"><img src="' + chart_data_url + '" alt="Grafico Spese"></div></div>' if chart_data_url else ''}
 
         <div class="card">
-            <h2>Spese per Categoria</h2>
+            <h2>Spese per Categoria (Periodo Selezionato)</h2>
             <table>
                 <thead>
                     <tr>
@@ -201,18 +209,18 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
     if statistics.current_month_summary.person_contributions:
         html += """
         <div class="card">
-            <h2>Contributi Persone (Mese Corrente)</h2>
+            <h2>Contributi Mensili Netti (Mese Corrente)</h2>
             <table>
                 <thead>
                     <tr>
                         <th>Persona</th>
-                        <th style="text-align: right;">Ha anticipato</th>
-                        <th style="text-align: right;">Dovra versare</th>
+                        <th style="text-align: right;">Anticipato nel mese</th>
+                        <th style="text-align: right;">Da versare mese successivo</th>
                     </tr>
                 </thead>
                 <tbody>
         """
-        for name, values in statistics.current_month_summary.person_contributions.items():
+        for name, values in sorted(statistics.current_month_summary.person_contributions.items()):
             html += f"""
                     <tr>
                         <td>{escape(name)}</td>
@@ -229,136 +237,9 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
     html += """
 
         <div class="card">
-            <h2>Grosse Spese e Investimenti</h2>
-    """
-
-    # Add major expenses table
-    if statistics.major_expenses:
-        html += """
-            <table>
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Descrizione</th>
-                        <th>Categoria</th>
-                        <th>Persona</th>
-                        <th>Note</th>
-                        <th style="text-align: right;">Importo</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-        for exp in statistics.major_expenses:
-            notes = escape(exp.notes) if exp.notes else "-"
-            html += f"""
-                    <tr>
-                        <td>{exp.date.strftime("%d/%m/%Y")}</td>
-                        <td>{escape(exp.description)}</td>
-                        <td>{escape(exp.category)}</td>
-                        <td>{escape(exp.person.name)}</td>
-                        <td>{notes}</td>
-                        <td style="text-align: right;">€ {exp.amount:.2f}</td>
-                    </tr>
-            """
-        html += """
-                </tbody>
-            </table>
-        """
-    else:
-        html += "<p>Non ci sono grosse spese in questo periodo.</p>"
-
-    html += """
-        </div>
-
-        <div class="card">
-            <h2>Grossi Anticipi Personali</h2>
-            <div class="summary-grid" style="margin-bottom: 20px;">
-                <div class="summary-item">
-                    <strong>Marco ha anticipato:</strong><br>
-    """
-    html += f"€ {statistics.marco_advances:.2f}"
-    html += """
-                </div>
-                <div class="summary-item">
-                    <strong>Anna ha anticipato:</strong><br>
-    """
-    html += f"€ {statistics.anna_advances:.2f}"
-    html += """
-                </div>
-            </div>
-    """
-
-    # Add Marco's advances details
-    if statistics.marco_advance_details:
-        html += "<h3>Dettaglio Anticipi Marco</h3>"
-        html += """
-            <table>
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Descrizione</th>
-                        <th>Categoria</th>
-                        <th style="text-align: right;">Importo</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-        for t in statistics.marco_advance_details:
-            description = escape(t.description) if t.description else "-"
-            html += f"""
-                    <tr>
-                        <td>{t.date.strftime("%d/%m/%Y")}</td>
-                        <td>{description}</td>
-                        <td>{escape(t.category_name)}</td>
-                        <td style="text-align: right;">€ {t.amount:.2f}</td>
-                    </tr>
-            """
-        html += """
-                </tbody>
-            </table>
-        """
-    else:
-        html += "<p>Marco non ha anticipato spese in questo periodo.</p>"
-
-    # Add Anna's advances details
-    if statistics.anna_advance_details:
-        html += "<h3 style=\"margin-top: 20px;\">Dettaglio Anticipi Anna</h3>"
-        html += """
-            <table>
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Descrizione</th>
-                        <th>Categoria</th>
-                        <th style="text-align: right;">Importo</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-        for t in statistics.anna_advance_details:
-            description = escape(t.description) if t.description else "-"
-            html += f"""
-                    <tr>
-                        <td>{t.date.strftime("%d/%m/%Y")}</td>
-                        <td>{description}</td>
-                        <td>{escape(t.category_name)}</td>
-                        <td style="text-align: right;">€ {t.amount:.2f}</td>
-                    </tr>
-            """
-        html += """
-                </tbody>
-            </table>
-        """
-    else:
-        html += "<p>Anna non ha anticipato spese in questo periodo.</p>"
-
-    html += """
-        </div>
-
-        <div class="card">
             <h2>Recap Finale</h2>
-            <h3>Situazione Complessiva Grossi Anticipi</h3>
-            <div class="summary-grid" style="margin-bottom: 20px;">
+            <h3>Bilancio Sezione Grossi Anticipi (separata dalla contabilità mensile)</h3>
+            <div class="summary-grid" style="margin-bottom: 12px;">
                 <div class="summary-item">
                     <strong>Totale Marco:</strong><br>
                     € """ + f"{statistics.large_advances_balance.marco_total:.2f}" + """
@@ -376,12 +257,48 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
                     € """ + f"{statistics.large_advances_balance.difference:.2f}" + """
                 </div>
             </div>
+            <p class="muted">""" + escape(large_advances_note) + """</p>
 
-            <h3>Nuove Voci Grosse Spese/Investimenti nel Periodo</h3>
+            <h3>Segnalazione Grosse Spese/Investimenti nel periodo selezionato</h3>
             <p>
                 Nuove entry: """ + f"{statistics.new_major_expenses_count}" + """<br>
-                Totale nuove entry: € """ + f"{statistics.new_major_expenses_total:.2f}" + """
+                Totale importi: € """ + f"{statistics.new_major_expenses_total:.2f}" + """
             </p>
+    """
+
+    if statistics.major_expenses:
+        html += """
+            <p class="muted">Ultime registrazioni nel periodo:</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrizione</th>
+                        <th>Categoria</th>
+                        <th>Persona</th>
+                        <th style="text-align: right;">Importo</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        for exp in statistics.major_expenses[:5]:
+            html += f"""
+                    <tr>
+                        <td>{exp.date.strftime("%d/%m/%Y")}</td>
+                        <td>{escape(exp.description)}</td>
+                        <td>{escape(exp.category)}</td>
+                        <td>{escape(exp.person.name)}</td>
+                        <td style="text-align: right;">€ {exp.amount:.2f}</td>
+                    </tr>
+            """
+        html += """
+                </tbody>
+            </table>
+        """
+    else:
+        html += "<p class=\"muted\">Nessuna grossa spesa/investimento registrata nel periodo.</p>"
+
+    html += """
         </div>
 
         <div class="card" style="background-color: #f0f7ff; text-align: center; padding: 15px;">
