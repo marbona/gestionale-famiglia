@@ -216,11 +216,15 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
             <div class="summary-grid" style="margin-bottom: 20px;">
                 <div class="summary-item">
                     <strong>Marco ha anticipato:</strong><br>
-                    € {statistics.marco_advances:.2f}
+    """
+    html += f"€ {statistics.marco_advances:.2f}"
+    html += """
                 </div>
                 <div class="summary-item">
                     <strong>Anna ha anticipato:</strong><br>
-                    € {statistics.anna_advances:.2f}
+    """
+    html += f"€ {statistics.anna_advances:.2f}"
+    html += """
                 </div>
             </div>
     """
