@@ -139,14 +139,13 @@ function HomePage() {
     console.log(`App: Attempting to delete transaction with ID: ${transactionId}`);
     try {
       await axios.delete(`/api/transactions/${transactionId}`);
-      // Optimistic UI update: remove row immediately without requiring full page refresh.
-      const idToDelete = Number(transactionId);
-      setTransactions((prev) => prev.filter((t) => Number(t.id) !== idToDelete));
-      if (editingTransaction?.id === idToDelete) {
+      // Force immediate local removal in UI; avoid immediate list refetch that can briefly return stale data.
+      const idToDelete = String(transactionId);
+      setTransactions((prev) => prev.filter((t) => String(t.id) !== idToDelete));
+      if (editingTransaction && String(editingTransaction.id) === idToDelete) {
         setEditingTransaction(null);
       }
-      console.log(`App: Successfully deleted transaction ID: ${transactionId}. Refreshing list and summary.`);
-      await fetchTransactions();
+      console.log(`App: Successfully deleted transaction ID: ${transactionId}. Refreshing summary.`);
       await fetchMonthlySummary();
       console.log("App: State after delete - transactions:", transactions, "monthlySummary:", monthlySummary);
     } catch (error) {
