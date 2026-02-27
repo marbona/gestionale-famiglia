@@ -328,16 +328,15 @@ function MajorExpensesPage() {
       {/* Expenses Table */}
       <TableContainer component={Paper}>
         <Table>
-          <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+          <TableHead sx={{ backgroundColor: '#1976d2', color: 'white' }}>
             <TableRow>
-              <TableCell sx={{ fontWeight: 'bold' }}>Data</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Descrizione</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Categoria</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Persona</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }} align="right">
+              <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Data</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Descrizione</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Persona</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white' }} align="right">
                 Importo
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }} align="center">
+              <TableCell sx={{ fontWeight: 'bold', color: 'white' }} align="center">
                 Azioni
               </TableCell>
             </TableRow>
@@ -356,19 +355,6 @@ function MajorExpensesPage() {
                 <TableRow key={expense.id} hover>
                   <TableCell>{format(new Date(expense.date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>{expense.description}</TableCell>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        backgroundColor: '#e3f2fd',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        display: 'inline-block',
-                      }}
-                    >
-                      {expense.category}
-                    </Typography>
-                  </TableCell>
                   <TableCell>{expense.person.name}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 'bold' }}>
                     €{expense.amount.toFixed(2)}
