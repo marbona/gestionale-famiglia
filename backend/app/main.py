@@ -404,3 +404,48 @@ async def download_report_endpoint(
         "Content-Disposition": f"attachment; filename=report_{start_date}_{end_date}.html"
     })
 
+
+# --- Major Expense Endpoints ---
+@app.post("/api/major-expenses/", response_model=schemas.MajorExpense)
+def create_major_expense_endpoint(major_expense: schemas.MajorExpenseCreate, db: Session = Depends(get_db)):
+    return crud.create_major_expense(db=db, major_expense=major_expense)
+
+@app.get("/api/major-expenses/", response_model=List[schemas.MajorExpense])
+def read_major_expenses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    major_expenses = crud.get_major_expenses(db, skip=skip, limit=limit)
+    return major_expenses
+
+@app.get("/api/major-expenses/year/{year}", response_model=List[schemas.MajorExpense])
+def read_major_expenses_by_year(year: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    major_expenses = crud.get_major_expenses_by_year(db, year=year, skip=skip, limit=limit)
+    return major_expenses
+
+@app.get("/api/major-expenses/category/{category}", response_model=List[schemas.MajorExpense])
+def read_major_expenses_by_category(category: str, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    major_expenses = crud.get_major_expenses_by_category(db, category=category, skip=skip, limit=limit)
+    return major_expenses
+
+@app.get("/api/major-expenses/{major_expense_id}", response_model=schemas.MajorExpense)
+def read_major_expense(major_expense_id: int, db: Session = Depends(get_db)):
+    db_major_expense = crud.get_major_expense(db, major_expense_id=major_expense_id)
+    if db_major_expense is None:
+        raise HTTPException(status_code=404, detail="Major expense not found")
+    return db_major_expense
+
+@app.put("/api/major-expenses/{major_expense_id}", response_model=schemas.MajorExpense)
+def update_major_expense_endpoint(major_expense_id: int, major_expense: schemas.MajorExpenseCreate, db: Session = Depends(get_db)):
+    db_major_expense = crud.update_major_expense(db, major_expense_id=major_expense_id, major_expense=major_expense)
+    if db_major_expense is None:
+        raise HTTPException(status_code=404, detail="Major expense not found")
+    return db_major_expense
+
+@app.delete("/api/major-expenses/{major_expense_id}", response_model=schemas.MajorExpense)
+def delete_major_expense_endpoint(major_expense_id: int, db: Session = Depends(get_db)):
+    db_major_expense = crud.delete_major_expense(db, major_expense_id=major_expense_id)
+    if db_major_expense is None:
+        raise HTTPException(status_code=404, detail="Major expense not found")
+    return db_major_expense
+
+@app.get("/api/major-expenses-summary/")
+def get_major_expenses_summary(db: Session = Depends(get_db)):
+    return crud.get_major_expenses_summary(db)

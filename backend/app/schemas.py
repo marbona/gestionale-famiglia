@@ -157,3 +157,21 @@ class PeriodStatistics(BaseModel):
 
     class Config:
         from_attributes = True
+# --- MajorExpense Schemas ---
+class MajorExpenseBase(BaseModel):
+    date: date
+    description: str
+    category: str
+    amount: float
+    notes: Optional[str] = None
+    person_id: int
+
+class MajorExpenseCreate(MajorExpenseBase):
+    pass
+
+class MajorExpense(MajorExpenseBase):
+    id: int
+    person: Person
+
+    class Config:
+        from_attributes = True

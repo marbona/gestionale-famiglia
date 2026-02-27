@@ -392,3 +392,66 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
         marco_advance_details=marco_advance_details,
         anna_advance_details=anna_advance_details
     )
+# --- MajorExpense CRUD ---
+def create_major_expense(db: Session, major_expense: schemas.MajorExpenseCreate):
+    db_major_expense = models.MajorExpense(**major_expense.dict())
+    db.add(db_major_expense)
+    db.commit()
+    db.refresh(db_major_expense)
+    return db_major_expense
+
+def get_major_expense(db: Session, major_expense_id: int):
+    return db.query(models.MajorExpense).filter(models.MajorExpense.id == major_expense_id).first()
+
+def get_major_expenses(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.MajorExpense).order_by(models.MajorExpense.date.desc()).offset(skip).limit(limit).all()
+
+def get_major_expenses_by_year(db: Session, year: int, skip: int = 0, limit: int = 100):
+    return db.query(models.MajorExpense).filter(
+        extract('year', models.MajorExpense.date) == year
+    ).order_by(models.MajorExpense.date.desc()).offset(skip).limit(limit).all()
+
+def get_major_expenses_by_category(db: Session, category: str, skip: int = 0, limit: int = 100):
+    return db.query(models.MajorExpense).filter(
+        models.MajorExpense.category == category
+    ).order_by(models.MajorExpense.date.desc()).offset(skip).limit(limit).all()
+
+def update_major_expense(db: Session, major_expense_id: int, major_expense: schemas.MajorExpenseCreate):
+    db_major_expense = get_major_expense(db, major_expense_id)
+    if db_major_expense:
+        for key, value in major_expense.dict().items():
+            setattr(db_major_expense, key, value)
+        db.commit()
+        db.refresh(db_major_expense)
+    return db_major_expense
+
+def delete_major_expense(db: Session, major_expense_id: int):
+    db_major_expense = get_major_expense(db, major_expense_id)
+    if db_major_expense:
+        db.delete(db_major_expense)
+        db.commit()
+    return db_major_expense
+
+def get_major_expenses_summary(db: Session):
+    """Get summary statistics for major expenses"""
+    total = db.query(func.sum(models.MajorExpense.amount)).scalar() or 0.0
+    
+    # By category
+    by_category = db.query(
+        models.MajorExpense.category,
+        func.sum(models.MajorExpense.amount),
+        func.count(models.MajorExpense.id)
+    ).group_by(models.MajorExpense.category).all()
+    
+    # By person
+    by_person = db.query(
+        models.Person.name,
+        func.sum(models.MajorExpense.amount),
+        func.count(models.MajorExpense.id)
+    ).join(models.MajorExpense).group_by(models.Person.name).all()
+    
+    return {
+        "total": total,
+        "by_category": [{"category": cat, "amount": amt, "count": cnt} for cat, amt, cnt in by_category],
+        "by_person": [{"person": person, "amount": amt, "count": cnt} for person, amt, cnt in by_person]
+    }

@@ -19,6 +19,7 @@ class Person(Base):
     transactions = relationship("Transaction", back_populates="person")
     large_advances = relationship("LargeAdvance", back_populates="person")
     personal_advances = relationship("PersonalAdvance", back_populates="person")
+    major_expenses = relationship("MajorExpense", back_populates="person")
 
 class AppSettings(Base):
     """Model for application settings (singleton table)"""
@@ -80,3 +81,17 @@ class LargeAdvance(Base):
     amount = Column(Float, nullable=False)
     date = Column(Date, nullable=False)
     description = Column(String)
+
+class MajorExpense(Base):
+    """Model for tracking major expenses/investments over years (renovations, education, etc.)"""
+    __tablename__ = "major_expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(Date, nullable=False)
+    description = Column(String, nullable=False)
+    category = Column(String, nullable=False)  # e.g., "Ristrutturazione", "Istruzione", "Manutenzione"
+    amount = Column(Float, nullable=False)
+    notes = Column(Text)  # Additional details
+    
+    person_id = Column(Integer, ForeignKey("persons.id"), nullable=False)
+    person = relationship("Person", back_populates="major_expenses")

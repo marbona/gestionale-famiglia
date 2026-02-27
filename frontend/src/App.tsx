@@ -4,6 +4,7 @@ import { Box } from '@mui/material';
 import Navigation from './components/Navigation';
 import HomePage from './pages/HomePage';
 import LargeAdvancesPage from './pages/LargeAdvancesPage';
+import MajorExpensesPage from './pages/MajorExpensesPage';
 import AdminPage from './pages/AdminPage';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/large-advances" element={<LargeAdvancesPage />} />
+            <Route path="/major-expenses" element={<MajorExpensesPage />} />
             <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </Box>

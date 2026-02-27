@@ -3,6 +3,7 @@ import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
 import HomeIcon from '@mui/icons-material/Home';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 function Navigation() {
@@ -38,6 +39,18 @@ function Navigation() {
             }}
           >
             Grossi Anticipi
+          </Button>
+          <Button
+            color="inherit"
+            component={Link}
+            to="/major-expenses"
+            startIcon={<TrendingUpIcon />}
+            variant={location.pathname === '/major-expenses' ? 'outlined' : 'text'}
+            sx={{
+              borderColor: location.pathname === '/major-expenses' ? 'white' : 'transparent',
+            }}
+          >
+            Grosse Spese
           </Button>
           <Button
             color="inherit"
