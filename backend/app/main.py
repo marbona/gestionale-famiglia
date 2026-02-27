@@ -1,8 +1,10 @@
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 from typing import List
 import json
+import asyncio
+from datetime import datetime, timedelta
 
 from . import crud, models, schemas
 from .database import SessionLocal, engine
@@ -30,8 +32,77 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def _build_smtp_config(settings: models.AppSettings):
+    return {
+        'server': settings.smtp_server,
+        'port': settings.smtp_port,
+        'username': settings.smtp_username,
+        'password': settings.smtp_password,
+        'use_tls': settings.smtp_use_tls
+    }
+
+
+def _parse_recipients(raw_value: str | None) -> List[str]:
+    if not raw_value:
+        return []
+    parsed = json.loads(raw_value)
+    if not isinstance(parsed, list):
+        raise ValueError("Recipients must be a JSON list")
+    recipients = [str(item).strip() for item in parsed if str(item).strip()]
+    if not recipients:
+        raise ValueError("Recipients list is empty")
+    return recipients
+
+
+async def _run_backup_scheduler():
+    while True:
+        db = SessionLocal()
+        try:
+            settings = crud.get_app_settings(db)
+            if settings.backup_enabled:
+                if not settings.smtp_username or not settings.smtp_password:
+                    await asyncio.sleep(60)
+                    continue
+
+                try:
+                    recipients = _parse_recipients(settings.backup_recipients)
+                except (ValueError, json.JSONDecodeError):
+                    await asyncio.sleep(60)
+                    continue
+
+                interval_hours = max(1, settings.backup_frequency_hours or 24)
+                now = datetime.utcnow()
+                can_send = (
+                    settings.backup_last_sent_at is None or
+                    now - settings.backup_last_sent_at >= timedelta(hours=interval_hours)
+                )
+
+                if can_send:
+                    payload = crud.export_backup_data(db)
+                    backup_json = json.dumps(payload, ensure_ascii=False, indent=2)
+                    filename = f"backup_gestionale_{now.strftime('%Y%m%d_%H%M%S')}.json"
+
+                    sent = await email_service.send_backup_email(
+                        smtp_config=_build_smtp_config(settings),
+                        recipients=recipients,
+                        subject=f"Backup Gestionale Famiglia - {now.strftime('%d/%m/%Y %H:%M')} UTC",
+                        body_text="In allegato il backup JSON del gestionale familiare.",
+                        attachment_name=filename,
+                        attachment_content=backup_json,
+                    )
+                    if sent:
+                        settings.backup_last_sent_at = now
+                        db.commit()
+        except Exception as exc:
+            print(f"Backup scheduler error: {exc}")
+        finally:
+            db.close()
+
+        await asyncio.sleep(60)
+
+
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
     db = SessionLocal()
     categories = crud.get_categories(db)
     if not categories:
@@ -46,6 +117,18 @@ def startup_event():
         for name in initial_categories:
             crud.create_category(db, schemas.CategoryCreate(name=name))
     db.close()
+    app.state.backup_scheduler_task = asyncio.create_task(_run_backup_scheduler())
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    task = getattr(app.state, "backup_scheduler_task", None)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 # Dependency to get a DB session
 def get_db():
@@ -210,6 +293,77 @@ def update_app_settings_endpoint(settings: schemas.AppSettingsUpdate, db: Sessio
     return crud.update_app_settings(db, settings=settings)
 
 
+# --- Backup Endpoints ---
+@app.get("/api/backup/export/")
+def export_backup_endpoint(db: Session = Depends(get_db)):
+    payload = crud.export_backup_data(db)
+    now = datetime.utcnow()
+    filename = f"backup_gestionale_{now.strftime('%Y%m%d_%H%M%S')}.json"
+    return Response(
+        content=json.dumps(payload, ensure_ascii=False, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@app.post("/api/backup/restore/")
+async def restore_backup_endpoint(
+    backup_file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        raw_bytes = await backup_file.read()
+        payload_json = json.loads(raw_bytes.decode("utf-8"))
+        payload = schemas.BackupPayload(**payload_json)
+        result = crud.restore_backup_data(db, payload)
+        return {"message": "Backup ripristinato con successo", **result}
+    except json.JSONDecodeError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="File backup non valido (JSON malformato)")
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Errore ripristino backup: {exc}")
+
+
+@app.post("/api/backup/send-email/")
+async def send_backup_email_now_endpoint(db: Session = Depends(get_db)):
+    settings = crud.get_app_settings(db)
+    if not settings.smtp_username or not settings.smtp_password:
+        raise HTTPException(
+            status_code=400,
+            detail="SMTP configuration incomplete. Please configure email settings first."
+        )
+
+    try:
+        recipients = _parse_recipients(settings.backup_recipients)
+    except (json.JSONDecodeError, ValueError) as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid backup recipients format: {str(e)}"
+        )
+
+    payload = crud.export_backup_data(db)
+    now = datetime.utcnow()
+    backup_json = json.dumps(payload, ensure_ascii=False, indent=2)
+    filename = f"backup_gestionale_{now.strftime('%Y%m%d_%H%M%S')}.json"
+
+    success = await email_service.send_backup_email(
+        smtp_config=_build_smtp_config(settings),
+        recipients=recipients,
+        subject=f"Backup Gestionale Famiglia - {now.strftime('%d/%m/%Y %H:%M')} UTC",
+        body_text="In allegato il backup JSON del gestionale familiare.",
+        attachment_name=filename,
+        attachment_content=backup_json,
+    )
+
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to send backup email. Check SMTP configuration.")
+
+    settings.backup_last_sent_at = now
+    db.commit()
+    return {"message": "Backup inviato con successo", "recipients": recipients}
+
+
 # --- Category Update/Delete Endpoints ---
 @app.put("/api/categories/{category_id}", response_model=schemas.Category)
 def update_category_endpoint(category_id: int, category: schemas.CategoryUpdate, db: Session = Depends(get_db)):
@@ -230,7 +384,6 @@ def delete_category_endpoint(category_id: int, db: Session = Depends(get_db)):
 @app.get("/api/statistics/period/", response_model=schemas.PeriodStatistics)
 def get_period_statistics_endpoint(start_date: str, end_date: str, db: Session = Depends(get_db)):
     """Get statistics for a specific period (YYYY-MM-DD format)"""
-    from datetime import datetime
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -248,7 +401,6 @@ async def send_email_report_endpoint(
     db: Session = Depends(get_db)
 ):
     """Generate and send email report for a specific period"""
-    from datetime import datetime
 
     # Parse dates
     try:
@@ -278,9 +430,7 @@ async def send_email_report_endpoint(
         )
 
     try:
-        recipients = json.loads(settings.email_recipients)
-        if not isinstance(recipients, list) or len(recipients) == 0:
-            raise ValueError("Recipients must be a non-empty list")
+        recipients = _parse_recipients(settings.email_recipients)
     except (json.JSONDecodeError, ValueError) as e:
         raise HTTPException(
             status_code=400,
@@ -291,13 +441,7 @@ async def send_email_report_endpoint(
     html_content = email_service.generate_report_html(statistics, include_charts=True)
 
     # Prepare SMTP config
-    smtp_config = {
-        'server': settings.smtp_server,
-        'port': settings.smtp_port,
-        'username': settings.smtp_username,
-        'password': settings.smtp_password,
-        'use_tls': settings.smtp_use_tls
-    }
+    smtp_config = _build_smtp_config(settings)
 
     # Send email
     subject = f"Report Spese Familiari - {start.strftime('%d/%m/%Y')} - {end.strftime('%d/%m/%Y')}"
@@ -335,9 +479,7 @@ async def test_email_endpoint(db: Session = Depends(get_db)):
         )
 
     try:
-        recipients = json.loads(settings.email_recipients)
-        if not isinstance(recipients, list) or len(recipients) == 0:
-            raise ValueError("Recipients must be a non-empty list")
+        recipients = _parse_recipients(settings.email_recipients)
     except (json.JSONDecodeError, ValueError) as e:
         raise HTTPException(
             status_code=400,
@@ -345,13 +487,7 @@ async def test_email_endpoint(db: Session = Depends(get_db)):
         )
 
     # Prepare test email
-    smtp_config = {
-        'server': settings.smtp_server,
-        'port': settings.smtp_port,
-        'username': settings.smtp_username,
-        'password': settings.smtp_password,
-        'use_tls': settings.smtp_use_tls
-    }
+    smtp_config = _build_smtp_config(settings)
 
     test_html = """
     <html>
@@ -385,8 +521,6 @@ async def download_report_endpoint(
     db: Session = Depends(get_db)
 ):
     """Generate and download HTML report for a specific period"""
-    from datetime import datetime
-
     # Parse dates
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()

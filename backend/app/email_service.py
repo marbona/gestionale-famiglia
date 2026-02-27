@@ -1,9 +1,7 @@
 import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
-import json
-from datetime import date
+from email.mime.application import MIMEApplication
 from typing import List
 import io
 import base64
@@ -344,4 +342,40 @@ async def send_email_report(
         return True
     except Exception as e:
         print(f"Error sending email: {e}")
+        return False
+
+
+async def send_backup_email(
+    smtp_config: dict,
+    recipients: List[str],
+    subject: str,
+    body_text: str,
+    attachment_name: str,
+    attachment_content: str
+) -> bool:
+    """Send backup email with JSON attachment."""
+
+    message = MIMEMultipart()
+    message['Subject'] = subject
+    message['From'] = smtp_config.get('username', '')
+    message['To'] = ', '.join(recipients)
+
+    message.attach(MIMEText(body_text, 'plain'))
+
+    attachment = MIMEApplication(attachment_content.encode('utf-8'), _subtype='json')
+    attachment.add_header('Content-Disposition', 'attachment', filename=attachment_name)
+    message.attach(attachment)
+
+    try:
+        await aiosmtplib.send(
+            message,
+            hostname=smtp_config['server'],
+            port=smtp_config['port'],
+            username=smtp_config['username'],
+            password=smtp_config['password'],
+            start_tls=True,
+        )
+        return True
+    except Exception as e:
+        print(f"Error sending backup email: {e}")
         return False

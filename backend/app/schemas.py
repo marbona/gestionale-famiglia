@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional, Dict
 
 # --- Person Schemas ---
@@ -28,6 +28,10 @@ class AppSettingsBase(BaseModel):
     smtp_password: Optional[str] = None
     smtp_use_tls: Optional[bool] = True
     email_recipients: Optional[str] = None  # JSON string of email list
+    backup_enabled: bool = False
+    backup_frequency_hours: int = 24
+    backup_recipients: Optional[str] = None  # JSON string of email list
+    backup_last_sent_at: Optional[datetime] = None
 
 class AppSettingsUpdate(BaseModel):
     monthly_contribution_per_person: Optional[float] = None
@@ -37,6 +41,10 @@ class AppSettingsUpdate(BaseModel):
     smtp_password: Optional[str] = None
     smtp_use_tls: Optional[bool] = None
     email_recipients: Optional[str] = None
+    backup_enabled: Optional[bool] = None
+    backup_frequency_hours: Optional[int] = None
+    backup_recipients: Optional[str] = None
+    backup_last_sent_at: Optional[datetime] = None
 
 class AppSettings(BaseModel):
     id: int
@@ -48,6 +56,10 @@ class AppSettings(BaseModel):
     smtp_password: Optional[str]
     smtp_use_tls: Optional[bool]
     email_recipients: Optional[str]
+    backup_enabled: bool
+    backup_frequency_hours: int
+    backup_recipients: Optional[str]
+    backup_last_sent_at: Optional[datetime]
 
     class Config:
         from_attributes = True
@@ -186,3 +198,35 @@ class MajorExpense(MajorExpenseBase):
 
     class Config:
         from_attributes = True
+
+
+class BackupTransactionItem(BaseModel):
+    date: date
+    description: str
+    amount: float
+    category: str
+    person: str
+
+
+class BackupLargeAdvanceItem(BaseModel):
+    date: date
+    description: Optional[str] = None
+    amount: float
+    person: str
+
+
+class BackupMajorExpenseItem(BaseModel):
+    date: date
+    description: str
+    category: str
+    amount: float
+    notes: Optional[str] = None
+    person: str
+
+
+class BackupPayload(BaseModel):
+    format_version: int
+    generated_at: str
+    transactions: List[BackupTransactionItem]
+    large_advances: List[BackupLargeAdvanceItem]
+    major_expenses: List[BackupMajorExpenseItem]

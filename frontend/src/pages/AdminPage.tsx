@@ -22,6 +22,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -47,6 +49,10 @@ interface AppSettings {
   smtp_password: string;
   smtp_use_tls: boolean;
   email_recipients: string;
+  backup_enabled: boolean;
+  backup_frequency_hours: number;
+  backup_recipients: string;
+  backup_last_sent_at?: string | null;
 }
 
 interface TransactionDetail {
@@ -129,6 +135,9 @@ function AdminPage() {
   const [statistics, setStatistics] = useState<PeriodStatistics | null>(null);
   const [sending, setSending] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  const [backupSending, setBackupSending] = useState(false);
 
   useEffect(() => {
     fetchPersons();
@@ -304,6 +313,61 @@ function AdminPage() {
     }
   };
 
+  const handleDownloadBackup = async () => {
+    try {
+      const response = await axios.get('/api/backup/export/', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `backup_gestionale_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showSnackbar('Backup scaricato con successo', 'success');
+    } catch (error) {
+      showSnackbar('Errore download backup', 'error');
+    }
+  };
+
+  const handleRestoreBackup = async () => {
+    if (!restoreFile) {
+      showSnackbar('Seleziona un file backup', 'error');
+      return;
+    }
+    if (!window.confirm('Il ripristino sovrascrivera TUTTE le entry delle tre sezioni. Continuare?')) {
+      return;
+    }
+
+    setRestoring(true);
+    try {
+      const formData = new FormData();
+      formData.append('backup_file', restoreFile);
+      await axios.post('/api/backup/restore/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      showSnackbar('Backup ripristinato con successo', 'success');
+      setRestoreFile(null);
+      fetchStatistics();
+    } catch (error: any) {
+      showSnackbar(error.response?.data?.detail || 'Errore ripristino backup', 'error');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  const handleSendBackupEmailNow = async () => {
+    setBackupSending(true);
+    try {
+      const response = await axios.post('/api/backup/send-email/');
+      showSnackbar(`Backup inviato a: ${response.data.recipients.join(', ')}`, 'success');
+      fetchSettings();
+    } catch (error: any) {
+      showSnackbar(error.response?.data?.detail || 'Errore invio backup', 'error');
+    } finally {
+      setBackupSending(false);
+    }
+  };
+
   const showSnackbar = (message: string, severity: 'success' | 'error') => {
     setSnackbar({ open: true, message, severity });
   };
@@ -320,6 +384,7 @@ function AdminPage() {
           <Tab label="Categorie" />
           <Tab label="Email SMTP" />
           <Tab label="Impostazioni" />
+          <Tab label="Backup" />
           <Tab label="Report & Statistiche" />
         </Tabs>
 
@@ -534,8 +599,103 @@ function AdminPage() {
           </Box>
         )}
 
-        {/* TAB 4: Report & Statistiche */}
-        {tabValue === 4 && (
+        {/* TAB 4: Backup */}
+        {tabValue === 4 && settings && (
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>Backup Dati</Typography>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Il ripristino sovrascrive completamente tutte le entry di: spese Home, grossi anticipi, grosse spese/investimenti.
+            </Alert>
+
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>Backup Manuale</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                  <Button fullWidth variant="contained" onClick={handleDownloadBackup}>
+                    Scarica Backup JSON
+                  </Button>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Button fullWidth variant="outlined" onClick={handleSendBackupEmailNow} disabled={backupSending}>
+                    {backupSending ? 'Invio...' : 'Invia Backup Ora via Email'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>Ripristino Backup</Typography>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={8}>
+                  <TextField
+                    fullWidth
+                    type="file"
+                    inputProps={{ accept: '.json,application/json' }}
+                    onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
+                    helperText={restoreFile ? `File selezionato: ${restoreFile.name}` : 'Seleziona un file backup JSON'}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Button fullWidth color="error" variant="contained" onClick={handleRestoreBackup} disabled={restoring || !restoreFile}>
+                    {restoring ? 'Ripristino...' : 'Ripristina Backup'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>Invio Backup Programmato (ricorsivo)</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={settings.backup_enabled}
+                        onChange={(e) => setSettings({ ...settings, backup_enabled: e.target.checked })}
+                      />
+                    }
+                    label="Abilita backup programmato"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Ogni quante ore"
+                    value={settings.backup_frequency_hours || 24}
+                    onChange={(e) => setSettings({ ...settings, backup_frequency_hours: Math.max(1, parseInt(e.target.value) || 24) })}
+                    inputProps={{ min: 1 }}
+                    helperText="Esempio: 24 = una volta al giorno"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Destinatari Backup (JSON array)"
+                    value={settings.backup_recipients || ''}
+                    onChange={(e) => setSettings({ ...settings, backup_recipients: e.target.value })}
+                    helperText='Es: ["mia-email@example.com"]'
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="text.secondary">
+                    Ultimo backup programmato inviato: {settings.backup_last_sent_at ? new Date(settings.backup_last_sent_at).toLocaleString('it-IT') : 'mai'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Button variant="contained" onClick={handleSettingsSave}>
+                    Salva Impostazioni Backup
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Box>
+        )}
+
+        {/* TAB 5: Report & Statistiche */}
+        {tabValue === 5 && (
           <Box sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>Report e Statistiche</Typography>
             <Grid container spacing={2} sx={{ mt: 1 }}>

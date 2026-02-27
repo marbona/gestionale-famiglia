@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, and_
-from datetime import date
+from datetime import date, datetime
+from typing import Any, Dict
 from . import models, schemas
 
 # --- Category CRUD ---
@@ -232,7 +233,9 @@ def get_app_settings(db: Session):
             monthly_contribution_per_person=1050.0,
             smtp_server="smtp.gmail.com",
             smtp_port=587,
-            smtp_use_tls=True
+            smtp_use_tls=True,
+            backup_enabled=False,
+            backup_frequency_hours=24
         )
         db.add(settings)
         db.commit()
@@ -251,6 +254,9 @@ def update_app_settings(db: Session, settings: schemas.AppSettingsUpdate):
     for key, value in settings.dict(exclude_unset=True).items():
         if value is not None:
             setattr(db_settings, key, value)
+
+    if db_settings.backup_frequency_hours is None or db_settings.backup_frequency_hours < 1:
+        db_settings.backup_frequency_hours = 24
 
     # Recalculate monthly_income
     db_settings.monthly_income = db_settings.monthly_contribution_per_person * 2
@@ -489,4 +495,120 @@ def get_major_expenses_summary(db: Session):
         "total": total,
         "by_category": [{"category": cat, "amount": amt, "count": cnt} for cat, amt, cnt in by_category],
         "by_person": [{"person": person, "amount": amt, "count": cnt} for person, amt, cnt in by_person]
+    }
+
+
+def export_backup_data(db: Session) -> Dict[str, Any]:
+    """Export human-readable backup for the three accounting sections."""
+    transactions = db.query(models.Transaction).join(models.Category).join(models.Person).order_by(models.Transaction.date.asc(), models.Transaction.id.asc()).all()
+    large_advances = db.query(models.LargeAdvance).join(models.Person).order_by(models.LargeAdvance.date.asc(), models.LargeAdvance.id.asc()).all()
+    major_expenses = db.query(models.MajorExpense).join(models.Person).order_by(models.MajorExpense.date.asc(), models.MajorExpense.id.asc()).all()
+
+    return {
+        "format_version": 1,
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "transactions": [
+            {
+                "date": t.date.isoformat(),
+                "description": t.description,
+                "amount": float(t.amount),
+                "category": t.category.name,
+                "person": t.person.name,
+            }
+            for t in transactions
+        ],
+        "large_advances": [
+            {
+                "date": a.date.isoformat(),
+                "description": a.description,
+                "amount": float(a.amount),
+                "person": a.person.name,
+            }
+            for a in large_advances
+        ],
+        "major_expenses": [
+            {
+                "date": e.date.isoformat(),
+                "description": e.description,
+                "category": e.category,
+                "amount": float(e.amount),
+                "notes": e.notes,
+                "person": e.person.name,
+            }
+            for e in major_expenses
+        ],
+    }
+
+
+def restore_backup_data(db: Session, payload: schemas.BackupPayload) -> Dict[str, int]:
+    """Restore backup and overwrite all existing entries in tracked sections."""
+    transactions = payload.transactions or []
+    large_advances = payload.large_advances or []
+    major_expenses = payload.major_expenses or []
+
+    person_names = {"COMUNE", "MARCO", "ANNA"}
+    person_names.update(item.person for item in transactions)
+    person_names.update(item.person for item in large_advances)
+    person_names.update(item.person for item in major_expenses)
+    person_names = {name.strip() for name in person_names if name and name.strip()}
+
+    category_names = {item.category.strip() for item in transactions if item.category and item.category.strip()}
+
+    # Ensure referenced people/categories exist before inserting restored entries.
+    for person_name in sorted(person_names):
+        if not get_person_by_name(db, person_name):
+            db.add(models.Person(name=person_name))
+
+    for category_name in sorted(category_names):
+        if not get_category_by_name(db, category_name):
+            db.add(models.Category(name=category_name))
+
+    db.flush()
+
+    person_by_name = {p.name: p for p in db.query(models.Person).all()}
+    category_by_name = {c.name: c for c in db.query(models.Category).all()}
+
+    db.query(models.Transaction).delete(synchronize_session=False)
+    db.query(models.LargeAdvance).delete(synchronize_session=False)
+    db.query(models.MajorExpense).delete(synchronize_session=False)
+
+    for item in transactions:
+        db.add(
+            models.Transaction(
+                date=item.date,
+                description=item.description,
+                amount=item.amount,
+                category_id=category_by_name[item.category].id,
+                person_id=person_by_name[item.person].id,
+            )
+        )
+
+    for item in large_advances:
+        db.add(
+            models.LargeAdvance(
+                date=item.date,
+                description=item.description,
+                amount=item.amount,
+                person_id=person_by_name[item.person].id,
+            )
+        )
+
+    for item in major_expenses:
+        db.add(
+            models.MajorExpense(
+                date=item.date,
+                description=item.description,
+                category=item.category,
+                amount=item.amount,
+                notes=item.notes,
+                person_id=person_by_name[item.person].id,
+            )
+        )
+
+    db.commit()
+
+    return {
+        "transactions_restored": len(transactions),
+        "large_advances_restored": len(large_advances),
+        "major_expenses_restored": len(major_expenses),
     }

@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date, ForeignKey, Enum, Boolean, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, ForeignKey, Enum, Boolean, Text
 from sqlalchemy.orm import relationship
 import enum
 
@@ -39,6 +39,12 @@ class AppSettings(Base):
 
     # Email recipients for reports
     email_recipients = Column(Text)  # JSON array of email addresses
+
+    # Scheduled backup settings
+    backup_enabled = Column(Boolean, default=False, nullable=False)
+    backup_frequency_hours = Column(Integer, default=24, nullable=False)
+    backup_recipients = Column(Text)  # JSON array of email addresses
+    backup_last_sent_at = Column(DateTime, nullable=True)
 
 class Category(Base):
     __tablename__ = "categories"
