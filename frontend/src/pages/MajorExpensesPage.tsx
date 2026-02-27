@@ -202,8 +202,12 @@ function MajorExpensesPage() {
     if (window.confirm('Sei sicuro di voler eliminare questa spesa?')) {
       try {
         await axios.delete(`/api/major-expenses/${id}`);
+        // Optimistic UI update: remove row immediately.
+        setExpenses((prev) => prev.filter((expense) => expense.id !== id));
+        if (editingExpense?.id === id) {
+          setEditingExpense(null);
+        }
         setSuccessMessage('Spesa eliminata con successo!');
-        await fetchExpenses();
         await fetchSummary();
       } catch (error) {
         console.error('Error deleting major expense:', error);

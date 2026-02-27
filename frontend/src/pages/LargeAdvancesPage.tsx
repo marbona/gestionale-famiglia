@@ -160,7 +160,11 @@ function LargeAdvancesPage() {
 
     try {
       await axios.delete(`/api/large-advances/${advanceId}`);
-      await fetchAdvances();
+      // Optimistic UI update: remove row immediately.
+      setAdvances((prev) => prev.filter((advance) => advance.id !== advanceId));
+      if (editingAdvance?.id === advanceId) {
+        setEditingAdvance(null);
+      }
       await fetchBalance();
     } catch (error) {
       console.error('Error deleting advance:', error);
