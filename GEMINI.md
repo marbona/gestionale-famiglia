@@ -1,13 +1,36 @@
 # Stato Progetto: Gestionale Famiglia
 
-## 📅 Ultimo Aggiornamento: 26 Febbraio 2026
-L'applicazione è completamente funzionante su Kubernetes.
+## 📅 Ultimo Aggiornamento: 27 Febbraio 2026 - 09:45 UTC
 
-## ✅ Problemi Risolti
+## ✅ STATO ATTUALE: FULMENTE FUNZIONANTE
 
-### 1. PostgreSQL CrashLoopBackOff
-- **Causa**: Directory di mount non vuota (`lost+found`).
-- **Soluzione**: Aggiunta variabile `PGDATA` nel deployment postgres.
+**Tutti i servizi sono in esecuzione e operativi:**
+
+```
+NAME                        READY   STATUS    RESTARTS   AGE
+backend-9ffb566cb-nshlf     1/1     Running   0          ~7 min
+frontend-7f75889d7-jqnf4    1/1     Running   0          ~7 min
+postgres-589467977c-zfj6f   1/1     Running   0          ~1 min
+```
+
+### Servizi Disponibili
+- **Frontend**: https://soldi.jezoo.it/ (via Nginx Proxy Manager)
+- **Backend API**: http://CLUSTER-IP:8000 (interno, port-forward: 8000)
+- **PostgreSQL**: postgres:5432 (interno)
+
+---
+
+## ✅ Problemi Risolti (27 Febbraio 2026)
+
+### 1. PostgreSQL CrashLoopBackOff Cronico
+- **Problema**: PostgreSQL rimase in `CrashLoopBackOff` con errori di checkpoint record invalido
+- **Root Cause**: 
+  1. Immagine custom non disponibile su GHCR (401 Unauthorized)
+  2. Volume Longhorn conteneva `lost+found` che PostgreSQL rifiuta
+- **Soluzione**: 
+  1. Cancellato namespace e PVC per reset completo
+  2. Usato `postgres:16-alpine` (ufficiale, pubblica)
+  3. Impostato `PGDATA=/var/lib/postgresql/data/pgdata` (subdirectory)
 
 ### 2. Errore Migrazioni Alembic
 - **Causa**: Tipo dato errato (`1` invece di `TRUE`) in una colonna Boolean.
