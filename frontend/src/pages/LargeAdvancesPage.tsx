@@ -164,13 +164,7 @@ function LargeAdvancesPage() {
 
     try {
       await axios.delete(`/api/large-advances/${advanceId}`);
-      // Force immediate local removal in UI; avoid immediate list refetch that can briefly return stale data.
-      const idToDelete = String(advanceId);
-      setAdvances((prev) => prev.filter((advance) => String(advance.id) !== idToDelete));
-      if (editingAdvance && String(editingAdvance.id) === idToDelete) {
-        setEditingAdvance(null);
-      }
-      await fetchBalance();
+      window.location.reload();
     } catch (error) {
       console.error('Error deleting advance:', error);
     }
