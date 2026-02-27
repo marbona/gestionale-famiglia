@@ -191,7 +191,7 @@ def update_transaction_endpoint(transaction_id: int, transaction: schemas.Transa
     print(f"API: PUT /api/transactions/{transaction_id} updated transaction.") # LOG
     return db_transaction
 
-@app.delete("/api/transactions/{transaction_id}", response_model=schemas.Transaction)
+@app.delete("/api/transactions/{transaction_id}")
 def delete_transaction_endpoint(transaction_id: int, db: Session = Depends(get_db)):
     print(f"API: DELETE /api/transactions/{transaction_id} called.") # LOG
     db_transaction = crud.delete_transaction(db, transaction_id=transaction_id)
@@ -199,7 +199,7 @@ def delete_transaction_endpoint(transaction_id: int, db: Session = Depends(get_d
         print(f"API: DELETE /api/transactions/{transaction_id} not found for delete.") # LOG
         raise HTTPException(status_code=404, detail="Transaction not found to delete")
     print(f"API: DELETE /api/transactions/{transaction_id} deleted transaction.") # LOG
-    return db_transaction
+    return {"message": "Transaction deleted", "id": transaction_id}
 
 
 # --- Summary Endpoints ---
@@ -235,12 +235,12 @@ def update_large_advance_endpoint(advance_id: int, advance: schemas.LargeAdvance
         raise HTTPException(status_code=404, detail="Large advance not found")
     return db_advance
 
-@app.delete("/api/large-advances/{advance_id}", response_model=schemas.LargeAdvance)
+@app.delete("/api/large-advances/{advance_id}")
 def delete_large_advance_endpoint(advance_id: int, db: Session = Depends(get_db)):
     db_advance = crud.delete_large_advance(db, advance_id=advance_id)
     if db_advance is None:
         raise HTTPException(status_code=404, detail="Large advance not found to delete")
-    return db_advance
+    return {"message": "Large advance deleted", "id": advance_id}
 
 @app.get("/api/large-advances/balance/summary")
 def get_large_advances_balance(db: Session = Depends(get_db)):
@@ -573,12 +573,12 @@ def update_major_expense_endpoint(major_expense_id: int, major_expense: schemas.
         raise HTTPException(status_code=404, detail="Major expense not found")
     return db_major_expense
 
-@app.delete("/api/major-expenses/{major_expense_id}", response_model=schemas.MajorExpense)
+@app.delete("/api/major-expenses/{major_expense_id}")
 def delete_major_expense_endpoint(major_expense_id: int, db: Session = Depends(get_db)):
     db_major_expense = crud.delete_major_expense(db, major_expense_id=major_expense_id)
     if db_major_expense is None:
         raise HTTPException(status_code=404, detail="Major expense not found")
-    return db_major_expense
+    return {"message": "Major expense deleted", "id": major_expense_id}
 
 @app.get("/api/major-expenses-summary/")
 def get_major_expenses_summary(db: Session = Depends(get_db)):
