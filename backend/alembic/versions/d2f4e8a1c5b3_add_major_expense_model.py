@@ -1,7 +1,7 @@
 """Add MajorExpense model for tracking large investments
 
 Revision ID: d2f4e8a1c5b3
-Revises: c78196e6db41
+Revises: c7316ad41abf
 Create Date: 2026-02-27 10:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'd2f4e8a1c5b3'
-down_revision: Union[str, Sequence[str], None] = 'c78196e6db41'
+down_revision: Union[str, Sequence[str], None] = 'c7316ad41abf'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
