@@ -380,6 +380,28 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
     # Average transaction
     average_transaction = total_expenses / total_transactions if total_transactions > 0 else 0.0
 
+    # Get major expenses for the period
+    major_expenses_raw = db.query(models.MajorExpense).filter(
+        and_(
+            models.MajorExpense.date >= start_date,
+            models.MajorExpense.date <= end_date
+        )
+    ).order_by(models.MajorExpense.date.desc()).all()
+
+    major_expenses = [
+        schemas.MajorExpense(
+            id=exp.id,
+            date=exp.date,
+            description=exp.description,
+            category=exp.category,
+            amount=exp.amount,
+            notes=exp.notes,
+            person_id=exp.person_id,
+            person=schemas.Person(id=exp.person.id, name=exp.person.name)
+        )
+        for exp in major_expenses_raw
+    ]
+
     return schemas.PeriodStatistics(
         start_date=start_date,
         end_date=end_date,
@@ -390,7 +412,8 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
         marco_advances=marco_advances,
         anna_advances=anna_advances,
         marco_advance_details=marco_advance_details,
-        anna_advance_details=anna_advance_details
+        anna_advance_details=anna_advance_details,
+        major_expenses=major_expenses
     )
 # --- MajorExpense CRUD ---
 def create_major_expense(db: Session, major_expense: schemas.MajorExpenseCreate):

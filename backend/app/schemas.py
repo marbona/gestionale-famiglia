@@ -154,6 +154,7 @@ class PeriodStatistics(BaseModel):
     anna_advances: float
     marco_advance_details: List[TransactionDetail]
     anna_advance_details: List[TransactionDetail]
+    major_expenses: List['MajorExpense'] = []
 
     class Config:
         from_attributes = True

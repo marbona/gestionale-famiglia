@@ -173,7 +173,14 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
         </div>
 
         <div class="card">
-            <h2>Anticipi Personali</h2>
+            <h2>Grosse Spese e Investimenti</h2>
+            {('<table><thead><tr><th>Data</th><th>Descrizione</th><th>Categoria</th><th>Persona</th><th style="text-align: right;">Importo</th></tr></thead><tbody>' +
+              ''.join([f'<tr><td>{exp.date.strftime("%d/%m/%Y")}</td><td>{exp.description}</td><td>{exp.category}</td><td>{exp.person.name}</td><td style="text-align: right;">€ {exp.amount:.2f}</td></tr>' for exp in statistics.major_expenses]) +
+              '</tbody></table>') if statistics.major_expenses else '<p>Non ci sono grosse spese in questo periodo.</p>'}
+        </div>
+
+        <div class="card">
+            <h2>Grossi Anticipi Personali</h2>
             <div class="summary-grid" style="margin-bottom: 20px;">
                 <div class="summary-item">
                     <strong>Marco ha anticipato:</strong><br>
