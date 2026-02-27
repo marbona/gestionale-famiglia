@@ -1,57 +1,92 @@
 # Stato Progetto: Gestionale Famiglia
 
-## 📅 Ultimo Aggiornamento: 27 Febbraio 2026 - 09:45 UTC
+## Ultimo Aggiornamento
+- Data: 27 Febbraio 2026
+- Stato: operativo in Kubernetes, backend/frontend/postgres `Running`.
 
-## ✅ STATO ATTUALE: FULMENTE FUNZIONANTE
+## Cos'è questa applicazione
+Gestionale familiare con 3 aree distinte:
+1. Spese mensili (Home): contabilità principale del mese.
+2. Grossi anticipi: contabilità separata per anticipi straordinari (es. eredità), fuori dal bilancio mensile.
+3. Grosse spese/investimenti: storico/nota nel tempo, non contabilizzato nei saldi mensili.
 
-**Tutti i servizi sono in esecuzione e operativi:**
+## Regole di business fondamentali
+- Marco e Anna versano una quota mensile fissa (default 1050 EUR ciascuno).
+- Nelle spese Home ogni voce è attribuita a chi ha pagato (`COMUNE`, `MARCO`, `ANNA`).
+- Il riepilogo mensile calcola automaticamente quanto ciascuno dovrà versare il mese successivo al netto degli anticipi mensili.
+- La sezione grossi anticipi è completamente separata dalla contabilità Home.
+- La sezione grosse spese/investimenti è solo tracciamento storico.
 
-```
-NAME                        READY   STATUS    RESTARTS   AGE
-backend-9ffb566cb-nshlf     1/1     Running   0          ~7 min
-frontend-7f75889d7-jqnf4    1/1     Running   0          ~7 min
-postgres-589467977c-zfj6f   1/1     Running   0          ~1 min
-```
+## Architettura tecnica
+- Frontend: React + Vite + MUI (`frontend/`)
+- Backend: FastAPI + SQLAlchemy + Alembic (`backend/`)
+- DB: PostgreSQL (`postgres:16-alpine`)
+- Deploy: manifest Kubernetes (`k8s/`) applicati da `install.sh`
+- CI/CD immagini: GitHub Actions su push `main` (`.github/workflows/build.yml`)
 
-### Servizi Disponibili
-- **Frontend**: https://soldi.jezoo.it/ (via Nginx Proxy Manager)
-- **Backend API**: http://CLUSTER-IP:8000 (interno, port-forward: 8000)
-- **PostgreSQL**: postgres:5432 (interno)
+## Deploy operativo (importante)
+Flusso corretto dopo ogni merge su `main`:
+1. Attendere build GHCR completata.
+2. Eseguire `bash install.sh`.
+3. Eseguire `kubectl -n gestionale rollout restart deployment/backend deployment/frontend`.
+4. Verificare `kubectl -n gestionale get pods`.
 
----
+Nota: i deployment usano tag `:latest`; `kubectl apply` spesso risulta `unchanged`, quindi il `rollout restart` è necessario per pullare davvero le nuove immagini.
 
-## ✅ Problemi Risolti (27 Febbraio 2026)
+## Funzionalità implementate recentemente
+### Reportistica
+- Report periodo con:
+  - riepilogo spese periodo selezionato,
+  - riepilogo mese corrente Home (entrate/spese/saldo + contributi netti),
+  - recap separato grossi anticipi,
+  - segnalazione sintetica grosse spese/investimenti nel periodo.
+- Invio report via email e download HTML.
 
-### 1. PostgreSQL CrashLoopBackOff Cronico
-- **Problema**: PostgreSQL rimase in `CrashLoopBackOff` con errori di checkpoint record invalido
-- **Root Cause**: 
-  1. Immagine custom non disponibile su GHCR (401 Unauthorized)
-  2. Volume Longhorn conteneva `lost+found` che PostgreSQL rifiuta
-- **Soluzione**: 
-  1. Cancellato namespace e PVC per reset completo
-  2. Usato `postgres:16-alpine` (ufficiale, pubblica)
-  3. Impostato `PGDATA=/var/lib/postgresql/data/pgdata` (subdirectory)
+### Backup
+- Nuova sezione Admin "Backup".
+- Export backup completo delle 3 sezioni in JSON human-readable.
+- Restore backup da file JSON con sovrascrittura completa delle entry esistenti.
+- Invio backup via email on-demand.
+- Invio backup schedulato ricorsivo con:
+  - destinatari dedicati backup (separati dai destinatari report),
+  - frequenza in ore configurabile,
+  - tracking `backup_last_sent_at`.
 
-### 2. Errore Migrazioni Alembic
-- **Causa**: Tipo dato errato (`1` invece di `TRUE`) in una colonna Boolean.
-- **Soluzione**: Corretto file di migrazione e rieseguita manualmente nel pod.
+## Problemi risolti recentemente (ordine cronologico sintetico)
+1. Report semanticamente errato:
+- Corretto allineamento con regole di business (separazione Home vs grossi anticipi vs grosse spese).
 
-### 3. Mixed Content Error (HTTPS -> HTTP)
-- **Causa**: Redirect HTTP generato dal backend per mancanza di slash finale.
-- **Soluzione**: 
-    - Aggiunto slash finale nel codice Axios (`HomePage.tsx`).
-    - Patchato Nginx frontend con `proxy_set_header X-Forwarded-Proto $scheme` e `proxy_redirect`.
+2. Bug delete UI apparentemente "non aggiorna":
+- Sintomo: dopo elimina, la riga sembrava restare finché non cambiavi pagina/sezione.
+- Root cause reale: endpoint DELETE restituivano il modello appena cancellato, introducendo comportamento instabile lato frontend.
+- Fix definitivo: endpoint DELETE ora rispondono con payload semplice/stabile (`message`, `id`), evitando serializzazione dell'oggetto eliminato.
 
-### 4. Configurazione SMTP e Destinatari
-- **Causa**: Il campo `email_recipients` conteneva una stringa semplice invece di una lista JSON (`["email@example.com"]`).
-- **Soluzione**: Aggiornato il database con il formato lista JSON corretto. **Test email inviato con successo!**
+3. PostgreSQL CrashLoopBackOff storico:
+- Risolto passando a immagine ufficiale `postgres:16-alpine` e impostando `PGDATA` su sottodirectory.
 
-## 🚀 Obiettivi per Domani (27 Febbraio)
+4. SMTP destinatari report non validi:
+- Corretto formato atteso: JSON array string (`["mail1@example.com"]`).
 
-- [ ] **GitHub Alignment**: Eseguire il commit di tutte le correzioni fatte localmente (Alembic, Frontend, Nginx config).
-- [ ] **CI/CD e Immagini GHCR**: Ricostruire le immagini di Backend e Frontend tramite GitHub Actions o localmente per includere le patch.
-- [ ] **Cleanup Kubernetes**: Una volta aggiornate le immagini GHCR, rimuovere i patch manuali dai deployment e tornare alla configurazione standard dei manifest.
+## API/DB aggiunte di recente
+- Nuovi endpoint backup:
+  - `GET /api/backup/export/`
+  - `POST /api/backup/restore/`
+  - `POST /api/backup/send-email/`
+- AppSettings estese con campi backup:
+  - `backup_enabled`
+  - `backup_frequency_hours`
+  - `backup_recipients`
+  - `backup_last_sent_at`
+- Migrazione Alembic:
+  - `backend/alembic/versions/77b8c9f1e2aa_add_backup_settings_columns.py`
 
-## 📝 Note Tecniche
-- **Endpoint**: `https://soldi.jezoo.it/`
-- **Repo**: `/root/gestionale-famiglia`
+## Note operative per la prossima AI
+- Non cambiare la semantica contabile delle 3 sezioni: è requisito chiave.
+- Prima di debug UI delete, verificare sempre status/response delle DELETE API.
+- Se il deploy sembra non aggiornarsi, ricordare il `rollout restart`.
+- I secret Kubernetes reali sono locali e fuori git (`k8s/**/secret.yaml` ignorati).
+
+## Riferimenti rapidi
+- Endpoint pubblico frontend: `https://soldi.jezoo.it/`
+- Repo locale: `/root/gestionale-famiglia`
+- Namespace Kubernetes: `gestionale`
