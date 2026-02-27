@@ -114,7 +114,9 @@ function MajorExpensesPage() {
 
   const fetchExpenses = async () => {
     try {
-      const response = await axios.get('/api/major-expenses/');
+      const response = await axios.get('/api/major-expenses/', {
+        params: { _ts: Date.now() },
+      });
       setExpenses(response.data);
     } catch (error) {
       console.error('Error fetching major expenses:', error);
@@ -123,7 +125,9 @@ function MajorExpensesPage() {
 
   const fetchSummary = async () => {
     try {
-      const response = await axios.get('/api/major-expenses-summary/');
+      const response = await axios.get('/api/major-expenses-summary/', {
+        params: { _ts: Date.now() },
+      });
       setSummary(response.data);
     } catch (error) {
       console.error('Error fetching summary:', error);

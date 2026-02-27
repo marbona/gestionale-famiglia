@@ -83,7 +83,13 @@ function HomePage() {
 
   const fetchTransactions = async () => {
     try {
-      const response = await axios.get(`/api/transactions/?year=${selectedYear}&month=${selectedMonth}`);
+      const response = await axios.get('/api/transactions/', {
+        params: {
+          year: selectedYear,
+          month: selectedMonth,
+          _ts: Date.now(),
+        },
+      });
       console.log("App: fetchTransactions API response data:", response.data);
       setTransactions(response.data);
     } catch (error) {
@@ -94,7 +100,13 @@ function HomePage() {
   const fetchMonthlySummary = async () => {
     setSummaryError(null);
     try {
-        const response = await axios.get(`/api/summary/monthly/?year=${selectedYear}&month=${selectedMonth}`);
+        const response = await axios.get('/api/summary/monthly/', {
+          params: {
+            year: selectedYear,
+            month: selectedMonth,
+            _ts: Date.now(),
+          },
+        });
         setMonthlySummary(response.data);
     } catch (err) {
         console.error("Error fetching monthly summary:", err);

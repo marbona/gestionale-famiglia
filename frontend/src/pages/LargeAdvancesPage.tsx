@@ -79,7 +79,9 @@ function LargeAdvancesPage() {
 
   const fetchAdvances = async () => {
     try {
-      const response = await axios.get('/api/large-advances/');
+      const response = await axios.get('/api/large-advances/', {
+        params: { _ts: Date.now() },
+      });
       setAdvances(response.data);
     } catch (error) {
       console.error('Error fetching large advances:', error);
@@ -88,7 +90,9 @@ function LargeAdvancesPage() {
 
   const fetchBalance = async () => {
     try {
-      const response = await axios.get('/api/large-advances/balance/summary');
+      const response = await axios.get('/api/large-advances/balance/summary', {
+        params: { _ts: Date.now() },
+      });
       setBalance(response.data);
     } catch (error) {
       console.error('Error fetching balance:', error);
