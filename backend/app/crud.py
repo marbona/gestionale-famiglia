@@ -313,29 +313,29 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
     marco = db.query(models.Person).filter(models.Person.name == "MARCO").first()
     anna = db.query(models.Person).filter(models.Person.name == "ANNA").first()
 
-    # Calculate advances (only personal payments, not COMUNE)
+    # Calculate advances from LargeAdvances table
     marco_advances = 0.0
     anna_advances = 0.0
     marco_advance_details = []
     anna_advance_details = []
 
     if marco:
-        marco_advances = db.query(func.sum(models.Transaction.amount)).filter(
+        marco_advances = db.query(func.sum(models.LargeAdvance.amount)).filter(
             and_(
-                models.Transaction.date >= start_date,
-                models.Transaction.date <= end_date,
-                models.Transaction.person_id == marco.id
+                models.LargeAdvance.date >= start_date,
+                models.LargeAdvance.date <= end_date,
+                models.LargeAdvance.person_id == marco.id
             )
         ).scalar() or 0.0
 
-        # Get Marco's advance details
-        marco_transactions = db.query(models.Transaction).join(models.Category).filter(
+        # Get Marco's advance details from LargeAdvances
+        marco_advances_raw = db.query(models.LargeAdvance).filter(
             and_(
-                models.Transaction.date >= start_date,
-                models.Transaction.date <= end_date,
-                models.Transaction.person_id == marco.id
+                models.LargeAdvance.date >= start_date,
+                models.LargeAdvance.date <= end_date,
+                models.LargeAdvance.person_id == marco.id
             )
-        ).all()
+        ).order_by(models.LargeAdvance.date.desc()).all()
 
         marco_advance_details = [
             schemas.TransactionDetail(
@@ -343,28 +343,28 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
                 date=t.date,
                 description=t.description,
                 amount=t.amount,
-                category_name=t.category.name
+                category_name="Anticipo"
             )
-            for t in marco_transactions
+            for t in marco_advances_raw
         ]
 
     if anna:
-        anna_advances = db.query(func.sum(models.Transaction.amount)).filter(
+        anna_advances = db.query(func.sum(models.LargeAdvance.amount)).filter(
             and_(
-                models.Transaction.date >= start_date,
-                models.Transaction.date <= end_date,
-                models.Transaction.person_id == anna.id
+                models.LargeAdvance.date >= start_date,
+                models.LargeAdvance.date <= end_date,
+                models.LargeAdvance.person_id == anna.id
             )
         ).scalar() or 0.0
 
-        # Get Anna's advance details
-        anna_transactions = db.query(models.Transaction).join(models.Category).filter(
+        # Get Anna's advance details from LargeAdvances
+        anna_advances_raw = db.query(models.LargeAdvance).filter(
             and_(
-                models.Transaction.date >= start_date,
-                models.Transaction.date <= end_date,
-                models.Transaction.person_id == anna.id
+                models.LargeAdvance.date >= start_date,
+                models.LargeAdvance.date <= end_date,
+                models.LargeAdvance.person_id == anna.id
             )
-        ).all()
+        ).order_by(models.LargeAdvance.date.desc()).all()
 
         anna_advance_details = [
             schemas.TransactionDetail(
@@ -372,9 +372,9 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
                 date=t.date,
                 description=t.description,
                 amount=t.amount,
-                category_name=t.category.name
+                category_name="Anticipo"
             )
-            for t in anna_transactions
+            for t in anna_advances_raw
         ]
 
     # Average transaction
