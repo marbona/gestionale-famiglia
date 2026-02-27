@@ -174,9 +174,41 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
 
         <div class="card">
             <h2>Grosse Spese e Investimenti</h2>
-            {('<table><thead><tr><th>Data</th><th>Descrizione</th><th>Categoria</th><th>Persona</th><th style="text-align: right;">Importo</th></tr></thead><tbody>' +
-              ''.join([f'<tr><td>{exp.date.strftime("%d/%m/%Y")}</td><td>{exp.description}</td><td>{exp.category}</td><td>{exp.person.name}</td><td style="text-align: right;">€ {exp.amount:.2f}</td></tr>' for exp in statistics.major_expenses]) +
-              '</tbody></table>') if statistics.major_expenses else '<p>Non ci sono grosse spese in questo periodo.</p>'}
+    """
+
+    # Add major expenses table
+    if statistics.major_expenses:
+        html += """
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrizione</th>
+                        <th>Categoria</th>
+                        <th>Persona</th>
+                        <th style="text-align: right;">Importo</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        for exp in statistics.major_expenses:
+            html += f"""
+                    <tr>
+                        <td>{exp.date.strftime("%d/%m/%Y")}</td>
+                        <td>{exp.description}</td>
+                        <td>{exp.category}</td>
+                        <td>{exp.person.name}</td>
+                        <td style="text-align: right;">€ {exp.amount:.2f}</td>
+                    </tr>
+            """
+        html += """
+                </tbody>
+            </table>
+        """
+    else:
+        html += "<p>Non ci sono grosse spese in questo periodo.</p>"
+
+    html += """
         </div>
 
         <div class="card">
@@ -191,26 +223,71 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
                     € {statistics.anna_advances:.2f}
                 </div>
             </div>
-
-            {('<h3>Dettaglio Anticipi Marco</h3><table><thead><tr><th>Data</th><th>Descrizione</th><th>Categoria</th><th style="text-align: right;">Importo</th></tr></thead><tbody>' +
-              ''.join([f'<tr><td>{t.date.strftime("%d/%m/%Y")}</td><td>{t.description}</td><td>{t.category_name}</td><td style="text-align: right;">€ {t.amount:.2f}</td></tr>' for t in statistics.marco_advance_details]) +
-              '</tbody></table>') if statistics.marco_advance_details else '<p>Marco non ha anticipato spese in questo periodo.</p>'}
-
-            {('<h3 style="margin-top: 20px;">Dettaglio Anticipi Anna</h3><table><thead><tr><th>Data</th><th>Descrizione</th><th>Categoria</th><th style="text-align: right;">Importo</th></tr></thead><tbody>' +
-              ''.join([f'<tr><td>{t.date.strftime("%d/%m/%Y")}</td><td>{t.description}</td><td>{t.category_name}</td><td style="text-align: right;">€ {t.amount:.2f}</td></tr>' for t in statistics.anna_advance_details]) +
-              '</tbody></table>') if statistics.anna_advance_details else '<p>Anna non ha anticipato spese in questo periodo.</p>'}
-        </div>
-
-        <div class="card" style="background-color: #f0f7ff; text-align: center; padding: 15px;">
-            <p style="margin: 0; color: #666;">
-                Report generato automaticamente dal Gestionale Famiglia
-            </p>
-        </div>
-    </body>
-    </html>
     """
 
-    return html
+    # Add Marco's advances details
+    if statistics.marco_advance_details:
+        html += "<h3>Dettaglio Anticipi Marco</h3>"
+        html += """
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrizione</th>
+                        <th>Categoria</th>
+                        <th style="text-align: right;">Importo</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        for t in statistics.marco_advance_details:
+            html += f"""
+                    <tr>
+                        <td>{t.date.strftime("%d/%m/%Y")}</td>
+                        <td>{t.description}</td>
+                        <td>{t.category_name}</td>
+                        <td style="text-align: right;">€ {t.amount:.2f}</td>
+                    </tr>
+            """
+        html += """
+                </tbody>
+            </table>
+        """
+    else:
+        html += "<p>Marco non ha anticipato spese in questo periodo.</p>"
+
+    # Add Anna's advances details
+    if statistics.anna_advance_details:
+        html += "<h3 style=\"margin-top: 20px;\">Dettaglio Anticipi Anna</h3>"
+        html += """
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrizione</th>
+                        <th>Categoria</th>
+                        <th style="text-align: right;">Importo</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        for t in statistics.anna_advance_details:
+            html += f"""
+                    <tr>
+                        <td>{t.date.strftime("%d/%m/%Y")}</td>
+                        <td>{t.description}</td>
+                        <td>{t.category_name}</td>
+                        <td style="text-align: right;">€ {t.amount:.2f}</td>
+                    </tr>
+            """
+        html += """
+                </tbody>
+            </table>
+        """
+    else:
+        html += "<p>Anna non ha anticipato spese in questo periodo.</p>"
+
+    html += """
 
 
 async def send_email_report(
