@@ -7,6 +7,7 @@ from datetime import date
 from typing import List
 import io
 import base64
+from html import escape
 
 # For generating charts
 try:
@@ -116,6 +117,9 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
                 max-width: 100%;
                 height: auto;
             }}
+            .muted {{
+                color: #666;
+            }}
         </style>
     </head>
     <body>
@@ -142,6 +146,27 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
             </div>
         </div>
 
+        <div class="card">
+            <h2>Riepilogo Mese Corrente (Home)</h2>
+            <p class="muted">
+                Mese: {statistics.current_month_summary.month:02d}/{statistics.current_month_summary.year}
+            </p>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <strong>Entrate Totali:</strong><br>
+                    € {statistics.current_month_summary.total_income:.2f}
+                </div>
+                <div class="summary-item">
+                    <strong>Spese Totali:</strong><br>
+                    € {statistics.current_month_summary.total_expenses:.2f}
+                </div>
+                <div class="summary-item">
+                    <strong>Saldo:</strong><br>
+                    € {statistics.current_month_summary.balance:.2f}
+                </div>
+            </div>
+        </div>
+
         {'<div class="card"><h2>Grafico Spese per Categoria</h2><div class="chart-container"><img src="' + chart_data_url + '" alt="Grafico Spese"></div></div>' if chart_data_url else ''}
 
         <div class="card">
@@ -161,7 +186,7 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
         percentage = (amount / statistics.total_expenses * 100) if statistics.total_expenses > 0 else 0
         html += f"""
                     <tr>
-                        <td>{category}</td>
+                        <td>{escape(category)}</td>
                         <td style="text-align: right;">€ {amount:.2f}</td>
                         <td style="text-align: right;">{percentage:.1f}%</td>
                     </tr>
@@ -171,6 +196,37 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
                 </tbody>
             </table>
         </div>
+    """
+
+    if statistics.current_month_summary.person_contributions:
+        html += """
+        <div class="card">
+            <h2>Contributi Persone (Mese Corrente)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Persona</th>
+                        <th style="text-align: right;">Ha anticipato</th>
+                        <th style="text-align: right;">Dovra versare</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        for name, values in statistics.current_month_summary.person_contributions.items():
+            html += f"""
+                    <tr>
+                        <td>{escape(name)}</td>
+                        <td style="text-align: right;">€ {values.get("paid", 0.0):.2f}</td>
+                        <td style="text-align: right;">€ {values.get("needs_to_pay", 0.0):.2f}</td>
+                    </tr>
+            """
+        html += """
+                </tbody>
+            </table>
+        </div>
+        """
+
+    html += """
 
         <div class="card">
             <h2>Grosse Spese e Investimenti</h2>
@@ -186,18 +242,21 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
                         <th>Descrizione</th>
                         <th>Categoria</th>
                         <th>Persona</th>
+                        <th>Note</th>
                         <th style="text-align: right;">Importo</th>
                     </tr>
                 </thead>
                 <tbody>
         """
         for exp in statistics.major_expenses:
+            notes = escape(exp.notes) if exp.notes else "-"
             html += f"""
                     <tr>
                         <td>{exp.date.strftime("%d/%m/%Y")}</td>
-                        <td>{exp.description}</td>
-                        <td>{exp.category}</td>
-                        <td>{exp.person.name}</td>
+                        <td>{escape(exp.description)}</td>
+                        <td>{escape(exp.category)}</td>
+                        <td>{escape(exp.person.name)}</td>
+                        <td>{notes}</td>
                         <td style="text-align: right;">€ {exp.amount:.2f}</td>
                     </tr>
             """
@@ -245,11 +304,12 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
                 <tbody>
         """
         for t in statistics.marco_advance_details:
+            description = escape(t.description) if t.description else "-"
             html += f"""
                     <tr>
                         <td>{t.date.strftime("%d/%m/%Y")}</td>
-                        <td>{t.description}</td>
-                        <td>{t.category_name}</td>
+                        <td>{description}</td>
+                        <td>{escape(t.category_name)}</td>
                         <td style="text-align: right;">€ {t.amount:.2f}</td>
                     </tr>
             """
@@ -276,11 +336,12 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
                 <tbody>
         """
         for t in statistics.anna_advance_details:
+            description = escape(t.description) if t.description else "-"
             html += f"""
                     <tr>
                         <td>{t.date.strftime("%d/%m/%Y")}</td>
-                        <td>{t.description}</td>
-                        <td>{t.category_name}</td>
+                        <td>{description}</td>
+                        <td>{escape(t.category_name)}</td>
                         <td style="text-align: right;">€ {t.amount:.2f}</td>
                     </tr>
             """
@@ -292,6 +353,35 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
         html += "<p>Anna non ha anticipato spese in questo periodo.</p>"
 
     html += """
+        </div>
+
+        <div class="card">
+            <h2>Recap Finale</h2>
+            <h3>Situazione Complessiva Grossi Anticipi</h3>
+            <div class="summary-grid" style="margin-bottom: 20px;">
+                <div class="summary-item">
+                    <strong>Totale Marco:</strong><br>
+                    € """ + f"{statistics.large_advances_balance.marco_total:.2f}" + """
+                </div>
+                <div class="summary-item">
+                    <strong>Totale Anna:</strong><br>
+                    € """ + f"{statistics.large_advances_balance.anna_total:.2f}" + """
+                </div>
+                <div class="summary-item">
+                    <strong>Totale complessivo:</strong><br>
+                    € """ + f"{statistics.large_advances_balance.total_advances:.2f}" + """
+                </div>
+                <div class="summary-item">
+                    <strong>Differenza:</strong><br>
+                    € """ + f"{statistics.large_advances_balance.difference:.2f}" + """
+                </div>
+            </div>
+
+            <h3>Nuove Voci Grosse Spese/Investimenti nel Periodo</h3>
+            <p>
+                Nuove entry: """ + f"{statistics.new_major_expenses_count}" + """<br>
+                Totale nuove entry: € """ + f"{statistics.new_major_expenses_total:.2f}" + """
+            </p>
         </div>
 
         <div class="card" style="background-color: #f0f7ff; text-align: center; padding: 15px;">

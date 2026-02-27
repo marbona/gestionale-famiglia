@@ -402,6 +402,14 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
         for exp in major_expenses_raw
     ]
 
+    # Include the same monthly summary logic used in Home page for current month.
+    today = date.today()
+    current_month_summary = get_monthly_summary(db, today.year, today.month)
+
+    # Include overall large-advances balance (global section recap).
+    large_advances_balance = schemas.LargeAdvancesBalanceSummary(**get_large_advances_balance(db))
+    new_major_expenses_total = sum(exp.amount for exp in major_expenses)
+
     return schemas.PeriodStatistics(
         start_date=start_date,
         end_date=end_date,
@@ -413,6 +421,10 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
         anna_advances=anna_advances,
         marco_advance_details=marco_advance_details,
         anna_advance_details=anna_advance_details,
+        current_month_summary=current_month_summary,
+        large_advances_balance=large_advances_balance,
+        new_major_expenses_count=len(major_expenses),
+        new_major_expenses_total=new_major_expenses_total,
         major_expenses=major_expenses
     )
 # --- MajorExpense CRUD ---

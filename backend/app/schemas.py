@@ -143,6 +143,12 @@ class TransactionDetail(BaseModel):
     amount: float
     category_name: str
 
+class LargeAdvancesBalanceSummary(BaseModel):
+    marco_total: float
+    anna_total: float
+    total_advances: float
+    difference: float
+
 class PeriodStatistics(BaseModel):
     start_date: date
     end_date: date
@@ -154,6 +160,10 @@ class PeriodStatistics(BaseModel):
     anna_advances: float
     marco_advance_details: List[TransactionDetail]
     anna_advance_details: List[TransactionDetail]
+    current_month_summary: MonthlySummary
+    large_advances_balance: LargeAdvancesBalanceSummary
+    new_major_expenses_count: int
+    new_major_expenses_total: float
     major_expenses: List['MajorExpense'] = []
 
     class Config:

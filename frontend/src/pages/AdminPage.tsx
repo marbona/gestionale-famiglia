@@ -68,6 +68,31 @@ interface PeriodStatistics {
   anna_advances: number;
   marco_advance_details: TransactionDetail[];
   anna_advance_details: TransactionDetail[];
+  current_month_summary: {
+    year: number;
+    month: number;
+    total_income: number;
+    total_expenses: number;
+    balance: number;
+    person_contributions: { [key: string]: { paid: number; needs_to_pay: number } };
+  };
+  large_advances_balance: {
+    marco_total: number;
+    anna_total: number;
+    total_advances: number;
+    difference: number;
+  };
+  new_major_expenses_count: number;
+  new_major_expenses_total: number;
+  major_expenses: {
+    id: number;
+    date: string;
+    description: string;
+    category: string;
+    amount: number;
+    notes?: string | null;
+    person: { id: number; name: string };
+  }[];
 }
 
 function AdminPage() {
@@ -679,6 +704,86 @@ function AdminPage() {
                   {statistics.marco_advance_details.length === 0 && statistics.anna_advance_details.length === 0 && (
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                       Nessun anticipo personale in questo periodo.
+                    </Typography>
+                  )}
+                </Paper>
+
+                <Paper sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>Riepilogo Mese Corrente (Home)</Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="body2">Entrate Totali:</Typography>
+                      <Typography variant="h6">€ {statistics.current_month_summary.total_income.toFixed(2)}</Typography>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="body2">Spese Totali:</Typography>
+                      <Typography variant="h6">€ {statistics.current_month_summary.total_expenses.toFixed(2)}</Typography>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="body2">Saldo:</Typography>
+                      <Typography variant="h6">€ {statistics.current_month_summary.balance.toFixed(2)}</Typography>
+                    </Grid>
+                  </Grid>
+                </Paper>
+
+                <Paper sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>Recap Grossi Anticipi (Totale Sezione)</Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="body2">Totale Marco:</Typography>
+                      <Typography variant="h6">€ {statistics.large_advances_balance.marco_total.toFixed(2)}</Typography>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="body2">Totale Anna:</Typography>
+                      <Typography variant="h6">€ {statistics.large_advances_balance.anna_total.toFixed(2)}</Typography>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="body2">Totale Complessivo:</Typography>
+                      <Typography variant="h6">€ {statistics.large_advances_balance.total_advances.toFixed(2)}</Typography>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="body2">Differenza:</Typography>
+                      <Typography variant="h6">€ {statistics.large_advances_balance.difference.toFixed(2)}</Typography>
+                    </Grid>
+                  </Grid>
+                </Paper>
+
+                <Paper sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>Nuove Grosse Spese/Investimenti nel Periodo</Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Nuove entry: <strong>{statistics.new_major_expenses_count}</strong> | Totale: <strong>€ {statistics.new_major_expenses_total.toFixed(2)}</strong>
+                  </Typography>
+
+                  {statistics.major_expenses.length > 0 ? (
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Data</TableCell>
+                            <TableCell>Descrizione</TableCell>
+                            <TableCell>Categoria</TableCell>
+                            <TableCell>Persona</TableCell>
+                            <TableCell>Note</TableCell>
+                            <TableCell align="right">Importo</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {statistics.major_expenses.map((exp) => (
+                            <TableRow key={exp.id}>
+                              <TableCell>{new Date(exp.date).toLocaleDateString('it-IT')}</TableCell>
+                              <TableCell>{exp.description}</TableCell>
+                              <TableCell>{exp.category}</TableCell>
+                              <TableCell>{exp.person.name}</TableCell>
+                              <TableCell>{exp.notes || '-'}</TableCell>
+                              <TableCell align="right">€ {exp.amount.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Nessuna nuova entry nel periodo selezionato.
                     </Typography>
                   )}
                 </Paper>
