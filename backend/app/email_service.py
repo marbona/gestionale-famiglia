@@ -292,6 +292,18 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
         html += "<p>Anna non ha anticipato spese in questo periodo.</p>"
 
     html += """
+        </div>
+
+        <div class="card" style="background-color: #f0f7ff; text-align: center; padding: 15px;">
+            <p style="margin: 0; color: #666;">
+                Report generato automaticamente dal Gestionale Famiglia
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+
+    return html
 
 
 async def send_email_report(
