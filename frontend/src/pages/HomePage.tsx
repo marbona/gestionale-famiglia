@@ -94,7 +94,7 @@ function HomePage() {
   const fetchMonthlySummary = async () => {
     setSummaryError(null);
     try {
-        const response = await axios.get(`/api/summary/monthly?year=${selectedYear}&month=${selectedMonth}`);
+        const response = await axios.get(`/api/summary/monthly/?year=${selectedYear}&month=${selectedMonth}`);
         setMonthlySummary(response.data);
     } catch (err) {
         console.error("Error fetching monthly summary:", err);

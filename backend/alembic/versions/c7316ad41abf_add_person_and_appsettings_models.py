@@ -93,7 +93,7 @@ def upgrade() -> None:
     op.execute("""
         INSERT INTO app_settings
         (id, monthly_income, monthly_contribution_per_person, smtp_server, smtp_port, smtp_use_tls)
-        VALUES (1, 2100.0, 1050.0, 'smtp.gmail.com', 587, 1)
+        VALUES (1, 2100.0, 1050.0, 'smtp.gmail.com', 587, TRUE)
     """)
 
 
