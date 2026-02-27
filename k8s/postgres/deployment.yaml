@@ -15,10 +15,10 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: ghcr.io/marbona/gestionale-famiglia-postgres-custom:latest
+          image: postgres:16-alpine
           env:
             - name: PGDATA
-              value: /var/lib/postgresql/data
+              value: /var/lib/postgresql/data/pgdata
           envFrom:
             - secretRef:
                 name: postgres-secret
