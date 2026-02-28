@@ -31,15 +31,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import { format } from 'date-fns';
 
-interface Person {
-  id: number;
-  name: string;
-}
-
 interface MajorExpense {
   id: number;
-  person_id: number;
-  person: Person;
   amount: number;
   date: string;
   description: string;
@@ -50,7 +43,6 @@ interface MajorExpense {
 interface MajorExpenseSummary {
   total: number;
   by_category: { category: string; amount: number; count: number }[];
-  by_person: { person: string; amount: number; count: number }[];
 }
 
 const EXPENSE_CATEGORIES = [
@@ -65,13 +57,10 @@ const EXPENSE_CATEGORIES = [
 
 function MajorExpensesPage() {
   const [expenses, setExpenses] = useState<MajorExpense[]>([]);
-  const [persons, setPersons] = useState<Person[]>([]);
   const [summary, setSummary] = useState<MajorExpenseSummary | null>(null);
   const [editingExpense, setEditingExpense] = useState<MajorExpense | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
 
-  // Form state
-  const [personId, setPersonId] = useState<number | ''>('');
   const [amount, setAmount] = useState<number | ''>('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [description, setDescription] = useState('');
@@ -80,19 +69,16 @@ function MajorExpensesPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Filter state
   const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
   const [filterCategory, setFilterCategory] = useState<string>('');
 
   useEffect(() => {
-    fetchPersons();
     fetchExpenses();
     fetchSummary();
   }, []);
 
   useEffect(() => {
     if (editingExpense) {
-      setPersonId(editingExpense.person_id);
       setAmount(editingExpense.amount);
       setDate(format(new Date(editingExpense.date), 'yyyy-MM-dd'));
       setDescription(editingExpense.description);
@@ -101,16 +87,7 @@ function MajorExpensesPage() {
     } else {
       resetForm();
     }
-  }, [editingExpense, persons]);
-
-  const fetchPersons = async () => {
-    try {
-      const response = await axios.get('/api/persons/');
-      setPersons(response.data);
-    } catch (error) {
-      console.error('Error fetching persons:', error);
-    }
-  };
+  }, [editingExpense]);
 
   const fetchExpenses = async () => {
     try {
@@ -118,8 +95,8 @@ function MajorExpensesPage() {
         params: { _ts: Date.now() },
       });
       setExpenses(response.data);
-    } catch (error) {
-      console.error('Error fetching major expenses:', error);
+    } catch (fetchError) {
+      console.error('Error fetching major expenses:', fetchError);
     }
   };
 
@@ -129,14 +106,12 @@ function MajorExpensesPage() {
         params: { _ts: Date.now() },
       });
       setSummary(response.data);
-    } catch (error) {
-      console.error('Error fetching summary:', error);
+    } catch (fetchError) {
+      console.error('Error fetching summary:', fetchError);
     }
   };
 
   const resetForm = () => {
-    const defaultPerson = persons.find(p => p.name !== 'COMUNE') || persons[0];
-    setPersonId(defaultPerson ? defaultPerson.id : '');
     setAmount('');
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setDescription('');
@@ -156,13 +131,13 @@ function MajorExpensesPage() {
     resetForm();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
     setSuccessMessage(null);
 
-    if (personId === '' || amount === '' || !date || !description || !category) {
-      setError('Persona, importo, data, descrizione e categoria sono obbligatori.');
+    if (amount === '' || !date || !description || !category) {
+      setError('Importo, data, descrizione e categoria sono obbligatori.');
       return;
     }
 
@@ -172,27 +147,26 @@ function MajorExpensesPage() {
     }
 
     const expenseData = {
-      person_id: personId as number,
       amount: parseFloat(amount.toString()),
-      date: date,
-      description: description,
-      category: category,
+      date,
+      description,
+      category,
       notes: notes || null,
     };
 
     try {
       if (editingExpense) {
         await axios.put(`/api/major-expenses/${editingExpense.id}`, expenseData);
-        setSuccessMessage('Spesa aggiornata con successo!');
+        setSuccessMessage('Spesa aggiornata con successo.');
       } else {
         await axios.post('/api/major-expenses/', expenseData);
-        setSuccessMessage('Spesa aggiunta con successo!');
+        setSuccessMessage('Spesa aggiunta con successo.');
       }
       handleCloseDialog();
       await fetchExpenses();
       await fetchSummary();
-    } catch (err) {
-      console.error('Error saving major expense:', err);
+    } catch (submitError) {
+      console.error('Error saving major expense:', submitError);
       setError('Errore durante il salvataggio.');
     }
   };
@@ -203,14 +177,21 @@ function MajorExpensesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Sei sicuro di voler eliminare questa spesa?')) {
-      try {
-        await axios.delete(`/api/major-expenses/${id}`);
-        window.location.reload();
-      } catch (error) {
-        console.error('Error deleting major expense:', error);
-        setError('Errore durante l\'eliminazione.');
+    if (!window.confirm('Sei sicuro di voler eliminare questa spesa?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`/api/major-expenses/${id}`);
+      if (editingExpense?.id === id) {
+        handleCloseDialog();
       }
+      setSuccessMessage('Spesa eliminata con successo.');
+      await fetchExpenses();
+      await fetchSummary();
+    } catch (deleteError) {
+      console.error('Error deleting major expense:', deleteError);
+      setError("Errore durante l'eliminazione.");
     }
   };
 
@@ -235,13 +216,12 @@ function MajorExpensesPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4 }}>
-        📊 Grosse Spese e Investimenti
+        Grosse Spese Familiari
       </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {successMessage && <Alert severity="success" sx={{ mb: 2 }}>{successMessage}</Alert>}
 
-      {/* Summary Cards */}
       {summary && (
         <Grid container spacing={2} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
@@ -271,7 +251,6 @@ function MajorExpensesPage() {
         </Grid>
       )}
 
-      {/* Add/Edit Button */}
       <Box sx={{ mb: 3 }}>
         <Button
           variant="contained"
@@ -283,7 +262,6 @@ function MajorExpensesPage() {
         </Button>
       </Box>
 
-      {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={6} md={3}>
@@ -327,14 +305,12 @@ function MajorExpensesPage() {
         </Grid>
       </Paper>
 
-      {/* Expenses Table */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead sx={{ backgroundColor: '#1976d2', color: 'white' }}>
             <TableRow>
               <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Data</TableCell>
               <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Descrizione</TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Persona</TableCell>
               <TableCell sx={{ fontWeight: 'bold', color: 'white' }} align="right">
                 Importo
               </TableCell>
@@ -346,7 +322,7 @@ function MajorExpensesPage() {
           <TableBody>
             {filteredExpenses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
                   <Typography color="textSecondary">
                     Nessuna spesa trovata per i filtri selezionati
                   </Typography>
@@ -357,7 +333,6 @@ function MajorExpensesPage() {
                 <TableRow key={expense.id} hover>
                   <TableCell>{format(new Date(expense.date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>{expense.description}</TableCell>
-                  <TableCell>{expense.person.name}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 'bold' }}>
                     €{expense.amount.toFixed(2)}
                   </TableCell>
@@ -386,7 +361,6 @@ function MajorExpensesPage() {
         </Table>
       </TableContainer>
 
-      {/* Category Summary */}
       {summary && summary.by_category.length > 0 && (
         <Paper sx={{ p: 3, mt: 4 }}>
           <Typography variant="h6" gutterBottom>
@@ -417,7 +391,6 @@ function MajorExpensesPage() {
         </Paper>
       )}
 
-      {/* Add/Edit Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
           {editingExpense ? 'Modifica Spesa' : 'Aggiungi Spesa'}
@@ -425,21 +398,6 @@ function MajorExpensesPage() {
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {error && <Alert severity="error">{error}</Alert>}
-
-            <FormControl fullWidth required>
-              <InputLabel>Persona</InputLabel>
-              <Select
-                value={personId}
-                label="Persona"
-                onChange={(e) => setPersonId(e.target.value as number)}
-              >
-                {persons.filter(p => p.name !== 'COMUNE').map((person) => (
-                  <MenuItem key={person.id} value={person.id}>
-                    {person.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
 
             <TextField
               label="Data"

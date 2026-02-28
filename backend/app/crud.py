@@ -4,6 +4,17 @@ from datetime import date, datetime
 from typing import Any, Dict
 from . import models, schemas
 
+
+def _get_or_create_comune_person(db: Session) -> models.Person:
+    comune = get_person_by_name(db, "COMUNE")
+    if comune:
+        return comune
+
+    comune = models.Person(name="COMUNE")
+    db.add(comune)
+    db.flush()
+    return comune
+
 # --- Category CRUD ---
 def get_category(db: Session, category_id: int):
     return db.query(models.Category).filter(models.Category.id == category_id).first()
@@ -348,6 +359,7 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
                 id=t.id,
                 date=t.date,
                 description=t.description,
+                notes=None,
                 amount=t.amount,
                 category_name="Anticipo"
             )
@@ -377,6 +389,7 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
                 id=t.id,
                 date=t.date,
                 description=t.description,
+                notes=None,
                 amount=t.amount,
                 category_name="Anticipo"
             )
@@ -402,8 +415,6 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
             category=exp.category,
             amount=exp.amount,
             notes=exp.notes,
-            person_id=exp.person_id,
-            person=schemas.Person(id=exp.person.id, name=exp.person.name)
         )
         for exp in major_expenses_raw
     ]
@@ -435,7 +446,10 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
     )
 # --- MajorExpense CRUD ---
 def create_major_expense(db: Session, major_expense: schemas.MajorExpenseCreate):
-    db_major_expense = models.MajorExpense(**major_expense.dict())
+    comune = _get_or_create_comune_person(db)
+    payload = major_expense.dict()
+    payload["person_id"] = comune.id
+    db_major_expense = models.MajorExpense(**payload)
     db.add(db_major_expense)
     db.commit()
     db.refresh(db_major_expense)
@@ -460,7 +474,9 @@ def get_major_expenses_by_category(db: Session, category: str, skip: int = 0, li
 def update_major_expense(db: Session, major_expense_id: int, major_expense: schemas.MajorExpenseCreate):
     db_major_expense = get_major_expense(db, major_expense_id)
     if db_major_expense:
-        for key, value in major_expense.dict().items():
+        payload = major_expense.dict()
+        payload["person_id"] = _get_or_create_comune_person(db).id
+        for key, value in payload.items():
             setattr(db_major_expense, key, value)
         db.commit()
         db.refresh(db_major_expense)
@@ -484,25 +500,60 @@ def get_major_expenses_summary(db: Session):
         func.count(models.MajorExpense.id)
     ).group_by(models.MajorExpense.category).all()
     
-    # By person
-    by_person = db.query(
-        models.Person.name,
-        func.sum(models.MajorExpense.amount),
-        func.count(models.MajorExpense.id)
-    ).join(models.MajorExpense).group_by(models.Person.name).all()
-    
     return {
         "total": total,
         "by_category": [{"category": cat, "amount": amt, "count": cnt} for cat, amt, cnt in by_category],
-        "by_person": [{"person": person, "amount": amt, "count": cnt} for person, amt, cnt in by_person]
+        "by_person": []
     }
+
+
+def copy_transactions_to_month(
+    db: Session,
+    source_year: int,
+    source_month: int,
+    target_year: int,
+    target_month: int,
+    transaction_ids: list[int] | None = None,
+):
+    source_query = db.query(models.Transaction).filter(
+        extract('year', models.Transaction.date) == source_year,
+        extract('month', models.Transaction.date) == source_month
+    )
+    source_transactions = source_query.order_by(
+        models.Transaction.category_id.asc(),
+        models.Transaction.id.asc(),
+    ).all()
+
+    if transaction_ids is not None:
+        requested_ids = set(transaction_ids)
+        source_transactions = [tx for tx in source_transactions if tx.id in requested_ids]
+
+    copied = []
+    target_date = date(target_year, target_month, 1)
+    for tx in source_transactions:
+        new_tx = models.Transaction(
+            date=target_date,
+            description=tx.description,
+            notes=tx.notes,
+            amount=tx.amount,
+            category_id=tx.category_id,
+            person_id=tx.person_id,
+        )
+        db.add(new_tx)
+        copied.append(new_tx)
+
+    db.commit()
+    for tx in copied:
+        db.refresh(tx)
+
+    return copied
 
 
 def export_backup_data(db: Session) -> Dict[str, Any]:
     """Export human-readable backup for the three accounting sections."""
     transactions = db.query(models.Transaction).join(models.Category).join(models.Person).order_by(models.Transaction.date.asc(), models.Transaction.id.asc()).all()
     large_advances = db.query(models.LargeAdvance).join(models.Person).order_by(models.LargeAdvance.date.asc(), models.LargeAdvance.id.asc()).all()
-    major_expenses = db.query(models.MajorExpense).join(models.Person).order_by(models.MajorExpense.date.asc(), models.MajorExpense.id.asc()).all()
+    major_expenses = db.query(models.MajorExpense).order_by(models.MajorExpense.date.asc(), models.MajorExpense.id.asc()).all()
 
     return {
         "format_version": 1,
@@ -511,6 +562,7 @@ def export_backup_data(db: Session) -> Dict[str, Any]:
             {
                 "date": t.date.isoformat(),
                 "description": t.description,
+                "notes": t.notes,
                 "amount": float(t.amount),
                 "category": t.category.name,
                 "person": t.person.name,
@@ -533,7 +585,7 @@ def export_backup_data(db: Session) -> Dict[str, Any]:
                 "category": e.category,
                 "amount": float(e.amount),
                 "notes": e.notes,
-                "person": e.person.name,
+                "person": "COMUNE",
             }
             for e in major_expenses
         ],
@@ -577,6 +629,7 @@ def restore_backup_data(db: Session, payload: schemas.BackupPayload) -> Dict[str
             models.Transaction(
                 date=item.date,
                 description=item.description,
+                notes=item.notes,
                 amount=item.amount,
                 category_id=category_by_name[item.category].id,
                 person_id=person_by_name[item.person].id,
@@ -601,7 +654,7 @@ def restore_backup_data(db: Session, payload: schemas.BackupPayload) -> Dict[str
                 category=item.category,
                 amount=item.amount,
                 notes=item.notes,
-                person_id=person_by_name[item.person].id,
+                person_id=person_by_name[(item.person or "COMUNE")].id,
             )
         )
 

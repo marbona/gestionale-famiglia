@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { TextField, Button, MenuItem, Select, FormControl, InputLabel, RadioGroup, FormControlLabel, Radio, Box, Alert } from '@mui/material';
-import { format } from 'date-fns';
+import { TextField, Button, MenuItem, Select, FormControl, InputLabel, Box, Alert } from '@mui/material';
 
 interface Category {
   id: number;
@@ -16,6 +15,7 @@ interface Person {
 interface TransactionData {
   date: string; // YYYY-MM-DD
   description: string;
+  notes?: string | null;
   amount: number;
   category_id: number;
   person_id: number;
@@ -30,13 +30,15 @@ interface Transaction extends TransactionData {
 interface TransactionFormProps {
   categories: Category[];
   persons: Person[];
+  selectedYear: number;
+  selectedMonth: number;
   onSave: () => void;
   transactionToEdit: Transaction | null;
 }
 
-const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, onSave, transactionToEdit }) => {
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, selectedYear, selectedMonth, onSave, transactionToEdit }) => {
   const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
   const [categoryId, setCategoryId] = useState<number | ''>('');
   const [personId, setPersonId] = useState<number | ''>('');
@@ -44,15 +46,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, 
 
   useEffect(() => {
     if (transactionToEdit) {
-      setDate(format(new Date(transactionToEdit.date), 'yyyy-MM-dd'));
       setDescription(transactionToEdit.description);
+      setNotes(transactionToEdit.notes || '');
       setAmount(transactionToEdit.amount);
       setCategoryId(transactionToEdit.category_id);
       setPersonId(transactionToEdit.person_id);
     } else {
       // Reset form if not editing
-      setDate(format(new Date(), 'yyyy-MM-dd'));
       setDescription('');
+      setNotes('');
       setAmount('');
       setCategoryId('');
       // Set default to first person (usually COMUNE)
@@ -65,8 +67,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, 
     event.preventDefault();
     setError(null);
 
-    if (!date || !description || amount === '' || categoryId === '' || personId === '') {
-      setError('Tutti i campi sono obbligatori.');
+    if (!description || amount === '' || categoryId === '' || personId === '') {
+      setError('Descrizione, importo, categoria e pagante sono obbligatori.');
       return;
     }
     if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
@@ -74,9 +76,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, 
       return;
     }
 
+    const effectiveDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
     const transactionData: TransactionData = {
-      date: date,
+      date: effectiveDate,
       description: description,
+      notes: notes.trim() ? notes.trim() : null,
       amount: parseFloat(amount.toString()),
       category_id: categoryId as number,
       person_id: personId as number,
@@ -106,16 +110,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, 
       {error && <Alert severity="error">{error}</Alert>}
       <div>
         <TextField
-          label="Data"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          InputLabelProps={{
-            shrink: true,
-          }}
-          required
-        />
-        <TextField
           label="Descrizione"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -125,7 +119,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, 
           label="Importo"
           type="number"
           value={amount}
-          onChange={(e) => setAmount(parseFloat(e.target.value))}
+          onChange={(e) => setAmount(e.target.value === '' ? '' : parseFloat(e.target.value))}
           inputProps={{ step: "0.01" }}
           required
         />
@@ -162,6 +156,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, 
             ))}
           </Select>
         </FormControl>
+      </div>
+      <div>
+        <TextField
+          label="Note (opzionale)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          multiline
+          rows={3}
+          sx={{ width: '100%', m: 1 }}
+        />
       </div>
       <Button type="submit" variant="contained" sx={{ m: 1 }}>
         {transactionToEdit ? 'Aggiorna Spesa' : 'Aggiungi Spesa'}

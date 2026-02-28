@@ -60,6 +60,7 @@ class Transaction(Base):
     id = Column(Integer, primary_key=True, index=True)
     date = Column(Date, nullable=False)
     description = Column(String, nullable=False)
+    notes = Column(Text, nullable=True)
     amount = Column(Float, nullable=False)
 
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)

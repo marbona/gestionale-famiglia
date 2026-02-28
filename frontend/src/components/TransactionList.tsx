@@ -1,8 +1,7 @@
 import React from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Chip, Typography } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import { format } from 'date-fns';
 
 interface Category {
   id: number;
@@ -16,8 +15,9 @@ interface Person {
 
 interface Transaction {
   id: number;
-  date: string; // YYYY-MM-DD
+  date: string;
   description: string;
+  notes?: string | null;
   amount: number;
   category_id: number;
   person_id: number;
@@ -29,18 +29,17 @@ interface TransactionListProps {
   transactions: Transaction[];
   onEdit: (transaction: Transaction) => void;
   onDelete: (transactionId: number) => void;
-  selectedYear: number;
-  selectedMonth: number;
+  categoryColorMap: Record<string, string>;
 }
 
-const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit, onDelete }) => {
+const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit, onDelete, categoryColorMap }) => {
   return (
     <TableContainer component={Paper}>
       <Table sx={{ minWidth: 650 }} aria-label="transaction table">
         <TableHead>
           <TableRow>
-            <TableCell>Data</TableCell>
             <TableCell>Descrizione</TableCell>
+            <TableCell>Note</TableCell>
             <TableCell align="right">Importo</TableCell>
             <TableCell>Categoria</TableCell>
             <TableCell>Pagante</TableCell>
@@ -55,12 +54,26 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
           ) : (
             transactions.map((transaction) => (
               <TableRow key={transaction.id}>
-                <TableCell component="th" scope="row">
-                  {format(new Date(transaction.date), 'dd/MM/yyyy')}
-                </TableCell>
                 <TableCell>{transaction.description}</TableCell>
+                <TableCell>
+                  {transaction.notes ? (
+                    <Typography variant="body2">{transaction.notes}</Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">-</Typography>
+                  )}
+                </TableCell>
                 <TableCell align="right">€ {transaction.amount.toFixed(2)}</TableCell>
-                <TableCell>{transaction.category.name}</TableCell>
+                <TableCell>
+                  <Chip
+                    label={transaction.category.name}
+                    size="small"
+                    sx={{
+                      backgroundColor: categoryColorMap[transaction.category.name] || '#e0e0e0',
+                      color: '#111',
+                      fontWeight: 600,
+                    }}
+                  />
+                </TableCell>
                 <TableCell>{transaction.person.name}</TableCell>
                 <TableCell align="center">
                   <Button
@@ -90,4 +103,3 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
 };
 
 export default TransactionList;
-

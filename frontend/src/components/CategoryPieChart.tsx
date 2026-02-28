@@ -1,6 +1,7 @@
 import React from 'react';
 import { Paper, Typography, Box } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { buildCategoryColorMap } from '../utils/categoryColors';
 
 interface CategoryExpenses {
     [key: string]: number; // Maps category name to total spent
@@ -13,19 +14,19 @@ interface MonthlySummary {
     total_expenses: number;
     balance: number;
     expenses_by_category: CategoryExpenses;
-    marco_paid_personal_this_month: number;
-    anna_paid_personal_this_month: number;
-    marco_next_month_contribution: number;
-    anna_next_month_contribution: number;
+    person_contributions: {
+      [key: string]: {
+        paid: number;
+        needs_to_pay: number;
+      };
+    };
 }
 
 interface CategoryPieChartProps {
     summary: MonthlySummary | null;
     summaryError: string | null;
+    categoryColorMap?: Record<string, string>;
 }
-
-// Color palette for the pie chart
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#d0ed57', '#a4de6c'];
 
 // Custom Tooltip component
 const CustomTooltip = ({ active, payload }: any) => {
@@ -41,11 +42,14 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const CategoryPieChart: React.FC<CategoryPieChartProps> = ({ summary, summaryError }) => {
+const CategoryPieChart: React.FC<CategoryPieChartProps> = ({ summary, summaryError, categoryColorMap }) => {
     const pieChartData = summary ? 
         Object.entries(summary.expenses_by_category)
               .filter(([, amount]) => amount > 0)
-              .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) })) : [];
+              .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
+              .sort((a, b) => a.name.localeCompare(b.name, 'it')) : [];
+    const fallbackColorMap = buildCategoryColorMap(pieChartData.map((item) => item.name));
+    const colors = categoryColorMap || fallbackColorMap;
 
     return (
         <Paper elevation={3} sx={{ p: 2, mb: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -70,8 +74,8 @@ const CategoryPieChart: React.FC<CategoryPieChartProps> = ({ summary, summaryErr
                                         fill="#8884d8"
                                         dataKey="value"
                                     >
-                                        {pieChartData.map((_entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        {pieChartData.map((entry) => (
+                                            <Cell key={`cell-${entry.name}`} fill={colors[entry.name]} />
                                         ))}
                                     </Pie>
                                     <Tooltip content={<CustomTooltip />} /> {/* Using custom tooltip */}
@@ -82,9 +86,9 @@ const CategoryPieChart: React.FC<CategoryPieChartProps> = ({ summary, summaryErr
                                 <Typography variant="subtitle1" sx={{ mb: 1 }}>
                                     Dettaglio Categorie:
                                 </Typography>
-                                {pieChartData.map((entry, index) => (
+                                {pieChartData.map((entry) => (
                                     <Box key={entry.name} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                                        <Box sx={{ width: 16, height: 16, bgcolor: COLORS[index % COLORS.length], mr: 1, borderRadius: '50%', flexShrink: 0 }} />
+                                        <Box sx={{ width: 16, height: 16, bgcolor: colors[entry.name], mr: 1, borderRadius: '50%', flexShrink: 0 }} />
                                         <Typography variant="body2">{entry.name}: <Typography component="span" fontWeight="bold">€ {entry.value.toFixed(2)}</Typography></Typography>
                                     </Box>
                                 ))}

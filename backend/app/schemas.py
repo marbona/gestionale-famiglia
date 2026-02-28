@@ -84,6 +84,7 @@ class Category(CategoryBase):
 class TransactionBase(BaseModel):
     date: date
     description: str
+    notes: Optional[str] = None
     amount: float
     category_id: int
     person_id: int
@@ -152,6 +153,7 @@ class TransactionDetail(BaseModel):
     id: int
     date: date
     description: str
+    notes: Optional[str] = None
     amount: float
     category_name: str
 
@@ -187,22 +189,34 @@ class MajorExpenseBase(BaseModel):
     category: str
     amount: float
     notes: Optional[str] = None
-    person_id: int
 
 class MajorExpenseCreate(MajorExpenseBase):
     pass
 
 class MajorExpense(MajorExpenseBase):
     id: int
-    person: Person
 
     class Config:
         from_attributes = True
 
 
+class MonthTemplateCopyRequest(BaseModel):
+    source_year: int
+    source_month: int
+    target_year: int
+    target_month: int
+    transaction_ids: Optional[List[int]] = None
+
+
+class MonthTemplateCopyResponse(BaseModel):
+    copied_count: int
+    created_ids: List[int]
+
+
 class BackupTransactionItem(BaseModel):
     date: date
     description: str
+    notes: Optional[str] = None
     amount: float
     category: str
     person: str
@@ -221,7 +235,7 @@ class BackupMajorExpenseItem(BaseModel):
     category: str
     amount: float
     notes: Optional[str] = None
-    person: str
+    person: Optional[str] = "COMUNE"
 
 
 class BackupPayload(BaseModel):

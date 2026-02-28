@@ -273,7 +273,6 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
                         <th>Data</th>
                         <th>Descrizione</th>
                         <th>Categoria</th>
-                        <th>Persona</th>
                         <th style="text-align: right;">Importo</th>
                     </tr>
                 </thead>
@@ -285,7 +284,6 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
                         <td>{exp.date.strftime("%d/%m/%Y")}</td>
                         <td>{escape(exp.description)}</td>
                         <td>{escape(exp.category)}</td>
-                        <td>{escape(exp.person.name)}</td>
                         <td style="text-align: right;">€ {exp.amount:.2f}</td>
                     </tr>
             """

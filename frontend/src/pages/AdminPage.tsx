@@ -97,7 +97,6 @@ interface PeriodStatistics {
     category: string;
     amount: number;
     notes?: string | null;
-    person: { id: number; name: string };
   }[];
 }
 
@@ -874,7 +873,6 @@ function AdminPage() {
                             <TableCell>Data</TableCell>
                             <TableCell>Descrizione</TableCell>
                             <TableCell>Categoria</TableCell>
-                            <TableCell>Persona</TableCell>
                             <TableCell align="right">Importo</TableCell>
                           </TableRow>
                         </TableHead>
@@ -884,7 +882,6 @@ function AdminPage() {
                               <TableCell>{new Date(exp.date).toLocaleDateString('it-IT')}</TableCell>
                               <TableCell>{exp.description}</TableCell>
                               <TableCell>{exp.category}</TableCell>
-                              <TableCell>{exp.person.name}</TableCell>
                               <TableCell align="right">€ {exp.amount.toFixed(2)}</TableCell>
                             </TableRow>
                           ))}

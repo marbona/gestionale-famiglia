@@ -191,6 +191,36 @@ def update_transaction_endpoint(transaction_id: int, transaction: schemas.Transa
     print(f"API: PUT /api/transactions/{transaction_id} updated transaction.") # LOG
     return db_transaction
 
+
+@app.post("/api/transactions/copy-month/", response_model=schemas.MonthTemplateCopyResponse)
+def copy_transactions_month_endpoint(payload: schemas.MonthTemplateCopyRequest, db: Session = Depends(get_db)):
+    for value, label in [
+        (payload.source_month, "source_month"),
+        (payload.target_month, "target_month"),
+    ]:
+        if value < 1 or value > 12:
+            raise HTTPException(status_code=400, detail=f"{label} must be between 1 and 12")
+
+    if payload.source_year < 2000 or payload.target_year < 2000:
+        raise HTTPException(status_code=400, detail="year must be >= 2000")
+
+    if payload.source_year == payload.target_year and payload.source_month == payload.target_month:
+        raise HTTPException(status_code=400, detail="source and target month must be different")
+
+    copied = crud.copy_transactions_to_month(
+        db=db,
+        source_year=payload.source_year,
+        source_month=payload.source_month,
+        target_year=payload.target_year,
+        target_month=payload.target_month,
+        transaction_ids=payload.transaction_ids,
+    )
+
+    return schemas.MonthTemplateCopyResponse(
+        copied_count=len(copied),
+        created_ids=[tx.id for tx in copied],
+    )
+
 @app.delete("/api/transactions/{transaction_id}")
 def delete_transaction_endpoint(transaction_id: int, db: Session = Depends(get_db)):
     print(f"API: DELETE /api/transactions/{transaction_id} called.") # LOG
