@@ -116,21 +116,36 @@ function AdminPage() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
   // Statistics state - default to last complete month
-  const getLastMonthDates = () => {
+  const getLastMonthRange = () => {
     const now = new Date();
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const firstDay = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
-    const lastDay = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+    const year = lastMonth.getFullYear();
+    const month = String(lastMonth.getMonth() + 1).padStart(2, '0');
+    const monthValue = `${year}-${month}`;
 
     return {
-      start: firstDay.toISOString().split('T')[0],
-      end: lastDay.toISOString().split('T')[0]
+      startMonth: monthValue,
+      endMonth: monthValue,
     };
   };
 
-  const defaultDates = getLastMonthDates();
-  const [startDate, setStartDate] = useState(defaultDates.start);
-  const [endDate, setEndDate] = useState(defaultDates.end);
+  const getMonthDateRange = (monthValue: string, isEnd: boolean): string => {
+    const [yearStr, monthStr] = monthValue.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    if (!year || !month) return '';
+
+    if (!isEnd) {
+      return `${yearStr}-${monthStr}-01`;
+    }
+
+    const lastDay = new Date(year, month, 0).getDate();
+    return `${yearStr}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
+  };
+
+  const defaultRange = getLastMonthRange();
+  const [startMonth, setStartMonth] = useState(defaultRange.startMonth);
+  const [endMonth, setEndMonth] = useState(defaultRange.endMonth);
   const [statistics, setStatistics] = useState<PeriodStatistics | null>(null);
   const [sending, setSending] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -242,10 +257,12 @@ function AdminPage() {
 
   // --- Statistics Functions ---
   const fetchStatistics = async () => {
-    if (!startDate || !endDate) {
-      showSnackbar('Seleziona data inizio e fine', 'error');
+    if (!startMonth || !endMonth) {
+      showSnackbar('Seleziona mese inizio e fine', 'error');
       return;
     }
+    const startDate = getMonthDateRange(startMonth, false);
+    const endDate = getMonthDateRange(endMonth, true);
     try {
       const response = await axios.get('/api/statistics/period/', {
         params: { start_date: startDate, end_date: endDate }
@@ -257,10 +274,12 @@ function AdminPage() {
   };
 
   const handleSendEmail = async () => {
-    if (!startDate || !endDate) {
-      showSnackbar('Seleziona data inizio e fine', 'error');
+    if (!startMonth || !endMonth) {
+      showSnackbar('Seleziona mese inizio e fine', 'error');
       return;
     }
+    const startDate = getMonthDateRange(startMonth, false);
+    const endDate = getMonthDateRange(endMonth, true);
     setSending(true);
     try {
       await axios.post('/api/reports/send-email/', null, {
@@ -287,10 +306,12 @@ function AdminPage() {
   };
 
   const handleDownloadReport = async () => {
-    if (!startDate || !endDate) {
-      showSnackbar('Seleziona data inizio e fine', 'error');
+    if (!startMonth || !endMonth) {
+      showSnackbar('Seleziona mese inizio e fine', 'error');
       return;
     }
+    const startDate = getMonthDateRange(startMonth, false);
+    const endDate = getMonthDateRange(endMonth, true);
     try {
       const response = await axios.get('/api/reports/download/', {
         params: { start_date: startDate, end_date: endDate },
@@ -701,20 +722,20 @@ function AdminPage() {
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  type="date"
-                  label="Data Inizio"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  type="month"
+                  label="Mese Inizio"
+                  value={startMonth}
+                  onChange={(e) => setStartMonth(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  type="date"
-                  label="Data Fine"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  type="month"
+                  label="Mese Fine"
+                  value={endMonth}
+                  onChange={(e) => setEndMonth(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>

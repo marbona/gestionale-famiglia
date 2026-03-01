@@ -284,13 +284,15 @@ function HomePage() {
   }, [transactions]);
 
   const categoryNamesForColors = useMemo(() => {
-    if (monthlySummary) {
-      return Object.entries(monthlySummary.expenses_by_category)
+    const fromSummary = monthlySummary
+      ? Object.entries(monthlySummary.expenses_by_category)
         .filter(([, amount]) => amount > 0)
-        .map(([name]) => name);
-    }
-    return orderedTransactions.map((item) => item.category.name);
-  }, [monthlySummary, orderedTransactions]);
+        .map(([name]) => name)
+      : [];
+    const fromCurrentMonth = orderedTransactions.map((item) => item.category.name);
+    const fromTemplate = templateTransactions.map((item) => item.category.name);
+    return [...fromSummary, ...fromCurrentMonth, ...fromTemplate];
+  }, [monthlySummary, orderedTransactions, templateTransactions]);
 
   const categoryColorMap = useMemo(
     () => buildCategoryColorMap(categoryNamesForColors),
@@ -339,123 +341,6 @@ function HomePage() {
               transactionToEdit={editingTransaction}
             />
           </Box>
-
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Copia mese (template)
-            </Typography>
-
-            <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={6}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Mese origine</InputLabel>
-                  <Select
-                    value={copySourceMonth}
-                    label="Mese origine"
-                    onChange={(e) => setCopySourceMonth(e.target.value as number)}
-                  >
-                    {months.map((m) => (
-                      <MenuItem key={`src-month-${m.value}`} value={m.value}>
-                        {m.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={6}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Anno origine</InputLabel>
-                  <Select
-                    value={copySourceYear}
-                    label="Anno origine"
-                    onChange={(e) => setCopySourceYear(e.target.value as number)}
-                  >
-                    {years.map((y) => (
-                      <MenuItem key={`src-year-${y}`} value={y}>{y}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={6}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Mese destinazione</InputLabel>
-                  <Select
-                    value={copyTargetMonth}
-                    label="Mese destinazione"
-                    onChange={(e) => setCopyTargetMonth(e.target.value as number)}
-                  >
-                    {months.map((m) => (
-                      <MenuItem key={`tgt-month-${m.value}`} value={m.value}>
-                        {m.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={6}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Anno destinazione</InputLabel>
-                  <Select
-                    value={copyTargetYear}
-                    label="Anno destinazione"
-                    onChange={(e) => setCopyTargetYear(e.target.value as number)}
-                  >
-                    {years.map((y) => (
-                      <MenuItem key={`tgt-year-${y}`} value={y}>{y}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-
-            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-              <Button
-                size="small"
-                onClick={() => setSelectedTemplateIds(templateTransactions.map((item) => item.id))}
-                disabled={templateTransactions.length === 0}
-              >
-                Seleziona tutto
-              </Button>
-              <Button
-                size="small"
-                onClick={() => setSelectedTemplateIds([])}
-                disabled={templateTransactions.length === 0}
-              >
-                Deseleziona tutto
-              </Button>
-            </Box>
-
-            <List dense sx={{ maxHeight: 220, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: 1, mb: 2 }}>
-              {templateTransactions.length === 0 && (
-                <ListItemText
-                  primary="Nessuna spesa trovata nel mese origine."
-                  sx={{ px: 2, py: 1, color: 'text.secondary' }}
-                />
-              )}
-              {templateTransactions.map((tx) => (
-                <ListItemButton key={tx.id} onClick={() => handleToggleTemplateTransaction(tx.id)}>
-                  <Checkbox edge="start" checked={selectedTemplateIds.includes(tx.id)} tabIndex={-1} disableRipple />
-                  <ListItemText
-                    primary={`${tx.category.name} | ${tx.description} | € ${tx.amount.toFixed(2)}`}
-                    secondary={tx.notes || tx.person.name}
-                  />
-                </ListItemButton>
-              ))}
-            </List>
-
-            {copyError && <Alert severity="error" sx={{ mb: 1 }}>{copyError}</Alert>}
-            {copySuccess && <Alert severity="success" sx={{ mb: 1 }}>{copySuccess}</Alert>}
-
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleCopyMonthTemplate}
-              disabled={copyLoading || templateTransactions.length === 0}
-            >
-              {copyLoading ? 'Copia in corso...' : 'Copia record selezionati'}
-            </Button>
-          </Paper>
         </Grid>
       </Grid>
 
@@ -470,6 +355,127 @@ function HomePage() {
           categoryColorMap={categoryColorMap}
         />
       </Box>
+
+      <Paper sx={{ p: 2, mt: 4 }}>
+        <Typography variant="h6" gutterBottom>
+          Copia mese (template)
+        </Typography>
+
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Mese origine</InputLabel>
+              <Select
+                value={copySourceMonth}
+                label="Mese origine"
+                onChange={(e) => setCopySourceMonth(e.target.value as number)}
+              >
+                {months.map((m) => (
+                  <MenuItem key={`src-month-${m.value}`} value={m.value}>
+                    {m.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Anno origine</InputLabel>
+              <Select
+                value={copySourceYear}
+                label="Anno origine"
+                onChange={(e) => setCopySourceYear(e.target.value as number)}
+              >
+                {years.map((y) => (
+                  <MenuItem key={`src-year-${y}`} value={y}>{y}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Mese destinazione</InputLabel>
+              <Select
+                value={copyTargetMonth}
+                label="Mese destinazione"
+                onChange={(e) => setCopyTargetMonth(e.target.value as number)}
+              >
+                {months.map((m) => (
+                  <MenuItem key={`tgt-month-${m.value}`} value={m.value}>
+                    {m.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Anno destinazione</InputLabel>
+              <Select
+                value={copyTargetYear}
+                label="Anno destinazione"
+                onChange={(e) => setCopyTargetYear(e.target.value as number)}
+              >
+                {years.map((y) => (
+                  <MenuItem key={`tgt-year-${y}`} value={y}>{y}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+
+        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+          <Button
+            size="small"
+            onClick={() => setSelectedTemplateIds(templateTransactions.map((item) => item.id))}
+            disabled={templateTransactions.length === 0}
+          >
+            Seleziona tutto
+          </Button>
+          <Button
+            size="small"
+            onClick={() => setSelectedTemplateIds([])}
+            disabled={templateTransactions.length === 0}
+          >
+            Deseleziona tutto
+          </Button>
+        </Box>
+
+        <List dense sx={{ maxHeight: 280, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: 1, mb: 2 }}>
+          {templateTransactions.length === 0 && (
+            <ListItemText
+              primary="Nessuna spesa trovata nel mese origine."
+              sx={{ px: 2, py: 1, color: 'text.secondary' }}
+            />
+          )}
+          {templateTransactions.map((tx) => (
+            <ListItemButton
+              key={tx.id}
+              onClick={() => handleToggleTemplateTransaction(tx.id)}
+              sx={{ borderLeft: `4px solid ${categoryColorMap[tx.category.name] || '#9e9e9e'}` }}
+            >
+              <Checkbox edge="start" checked={selectedTemplateIds.includes(tx.id)} tabIndex={-1} disableRipple />
+              <ListItemText
+                primary={`${tx.category.name} | ${tx.description} | € ${tx.amount.toFixed(2)}`}
+                secondary={tx.notes || tx.person.name}
+              />
+            </ListItemButton>
+          ))}
+        </List>
+
+        {copyError && <Alert severity="error" sx={{ mb: 1 }}>{copyError}</Alert>}
+        {copySuccess && <Alert severity="success" sx={{ mb: 1 }}>{copySuccess}</Alert>}
+
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={handleCopyMonthTemplate}
+          disabled={copyLoading || templateTransactions.length === 0}
+        >
+          {copyLoading ? 'Copia in corso...' : 'Copia record selezionati'}
+        </Button>
+      </Paper>
     </Container>
   );
 }
