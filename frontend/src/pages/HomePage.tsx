@@ -307,28 +307,32 @@ function HomePage() {
         </Typography>
       </Box>
 
-      <Grid container spacing={4}>
-        <Grid item xs={12} md={4}>
-          <MonthlySummaryDisplay
-            summary={monthlySummary}
-            year={selectedYear}
-            month={selectedMonth}
-            setYear={setSelectedYear}
-            setMonth={setSelectedMonth}
-            summaryError={summaryError}
-          />
+      <Grid container spacing={4} justifyContent="center">
+        <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ width: '100%', maxWidth: { xs: 460, md: '100%' } }}>
+            <MonthlySummaryDisplay
+              summary={monthlySummary}
+              year={selectedYear}
+              month={selectedMonth}
+              setYear={setSelectedYear}
+              setMonth={setSelectedMonth}
+              summaryError={summaryError}
+            />
+          </Box>
         </Grid>
 
-        <Grid item xs={12} md={4}>
-          <CategoryPieChart
-            summary={monthlySummary}
-            summaryError={summaryError}
-            categoryColorMap={categoryColorMap}
-          />
+        <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ width: '100%', maxWidth: { xs: 460, md: '100%' } }}>
+            <CategoryPieChart
+              summary={monthlySummary}
+              summaryError={summaryError}
+              categoryColorMap={categoryColorMap}
+            />
+          </Box>
         </Grid>
 
-        <Grid item xs={12} md={4}>
-          <Box sx={{ mb: 4 }}>
+        <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ mb: 4, width: '100%', maxWidth: { xs: 460, md: '100%' } }}>
             <Typography variant="h5" component="h2" gutterBottom>
               {editingTransaction ? 'Modifica Spesa' : 'Aggiungi Nuova Spesa'}
             </Typography>

@@ -106,9 +106,22 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, 
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ '& .MuiTextField-root': { m: 1, width: '25ch' }, mb: 4 }}>
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        '& .MuiTextField-root': { m: 1, width: '25ch' },
+        '& .form-row': {
+          width: '100%',
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: { xs: 'center', md: 'flex-start' },
+        },
+        mb: 4,
+      }}
+    >
       {error && <Alert severity="error">{error}</Alert>}
-      <div>
+      <Box className="form-row">
         <TextField
           label="Descrizione"
           value={description}
@@ -123,8 +136,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, 
           inputProps={{ step: "0.01" }}
           required
         />
-      </div>
-      <div>
+      </Box>
+      <Box className="form-row">
         <FormControl sx={{ m: 1, minWidth: 220 }} required>
           <InputLabel id="category-select-label">Categoria</InputLabel>
           <Select
@@ -156,29 +169,31 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ categories, persons, 
             ))}
           </Select>
         </FormControl>
-      </div>
-      <div>
+      </Box>
+      <Box className="form-row">
         <TextField
           label="Note (opzionale)"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           multiline
           rows={3}
-          sx={{ width: '100%', m: 1 }}
+          sx={{ width: { xs: 'calc(100% - 16px)', md: '100%' }, m: 1 }}
         />
-      </div>
-      <Button type="submit" variant="contained" sx={{ m: 1 }}>
-        {transactionToEdit ? 'Aggiorna Spesa' : 'Aggiungi Spesa'}
-      </Button>
-      {transactionToEdit && (
-        <Button 
-          variant="outlined" 
-          sx={{ m: 1 }} 
-          onClick={() => { onSave(); }} // Clear editing and refresh list
-        >
-          Annulla Modifica
+      </Box>
+      <Box className="form-row">
+        <Button type="submit" variant="contained" sx={{ m: 1 }}>
+          {transactionToEdit ? 'Aggiorna Spesa' : 'Aggiungi Spesa'}
         </Button>
-      )}
+        {transactionToEdit && (
+          <Button 
+            variant="outlined" 
+            sx={{ m: 1 }} 
+            onClick={() => { onSave(); }} // Clear editing and refresh list
+          >
+            Annulla Modifica
+          </Button>
+        )}
+      </Box>
     </Box>
   );
 };
