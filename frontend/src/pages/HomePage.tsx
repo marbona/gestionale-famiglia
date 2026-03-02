@@ -83,7 +83,6 @@ function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const currentInitialMonth = new Date().getMonth() + 1;
   const currentInitialYear = new Date().getFullYear();
@@ -207,21 +206,19 @@ function HomePage() {
   }, [selectedYear, selectedMonth]);
 
   const handleSaveTransaction = async () => {
-    setEditingTransaction(null);
     await fetchTransactions();
     await fetchMonthlySummary();
   };
 
-  const handleEditTransaction = (transaction: Transaction) => {
-    setEditingTransaction(transaction);
+  const handleTransactionListUpdated = async () => {
+    await fetchTransactions();
+    await fetchMonthlySummary();
+    await fetchTemplateTransactions();
   };
 
   const handleDeleteTransaction = async (transactionId: number) => {
     try {
       await axios.delete(`/api/transactions/${transactionId}`);
-      if (editingTransaction?.id === transactionId) {
-        setEditingTransaction(null);
-      }
       await fetchTransactions();
       await fetchMonthlySummary();
       await fetchTemplateTransactions();
@@ -264,7 +261,6 @@ function HomePage() {
       setCopySuccess(`Copiate ${response.data.copied_count} voci nel mese di destinazione.`);
       setSelectedYear(copyTargetYear);
       setSelectedMonth(copyTargetMonth);
-      setEditingTransaction(null);
       await fetchTransactions();
       await fetchMonthlySummary();
       await fetchTemplateTransactions();
@@ -362,7 +358,7 @@ function HomePage() {
         <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'center' }}>
           <Box sx={{ mb: 4, width: '100%', maxWidth: { xs: 460, md: '100%' } }}>
             <Typography variant="h5" component="h2" gutterBottom>
-              {editingTransaction ? 'Modifica Spesa' : 'Aggiungi Nuova Spesa'}
+              Aggiungi Nuova Spesa
             </Typography>
             <TransactionForm
               categories={categories}
@@ -370,7 +366,7 @@ function HomePage() {
               selectedYear={selectedYear}
               selectedMonth={selectedMonth}
               onSave={handleSaveTransaction}
-              transactionToEdit={editingTransaction}
+              transactionToEdit={null}
             />
           </Box>
         </Grid>
@@ -382,8 +378,10 @@ function HomePage() {
         </Typography>
         <TransactionList
           transactions={orderedTransactions}
-          onEdit={handleEditTransaction}
           onDelete={handleDeleteTransaction}
+          onUpdated={handleTransactionListUpdated}
+          categories={categories}
+          persons={persons}
           categoryColorMap={categoryColorMap}
         />
       </Box>

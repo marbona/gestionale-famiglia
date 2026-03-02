@@ -51,7 +51,12 @@ function LargeAdvancesPage() {
   const [advances, setAdvances] = useState<LargeAdvance[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [balance, setBalance] = useState<BalanceSummary | null>(null);
-  const [editingAdvance, setEditingAdvance] = useState<LargeAdvance | null>(null);
+  const [editingAdvanceId, setEditingAdvanceId] = useState<number | null>(null);
+  const [editPersonId, setEditPersonId] = useState<number | ''>('');
+  const [editAmount, setEditAmount] = useState<number | ''>('');
+  const [editDate, setEditDate] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [inlineSaving, setInlineSaving] = useState<boolean>(false);
 
   // Form state
   const [personId, setPersonId] = useState<number | ''>('');
@@ -67,15 +72,8 @@ function LargeAdvancesPage() {
   }, []);
 
   useEffect(() => {
-    if (editingAdvance) {
-      setPersonId(editingAdvance.person_id);
-      setAmount(editingAdvance.amount);
-      setDate(format(new Date(editingAdvance.date), 'yyyy-MM-dd'));
-      setDescription(editingAdvance.description || '');
-    } else {
-      resetForm();
-    }
-  }, [editingAdvance, persons]);
+    resetForm();
+  }, [persons]);
 
   const fetchAdvances = async () => {
     try {
@@ -140,12 +138,7 @@ function LargeAdvancesPage() {
     };
 
     try {
-      if (editingAdvance) {
-        await axios.put(`/api/large-advances/${editingAdvance.id}`, advanceData);
-      } else {
-        await axios.post('/api/large-advances/', advanceData);
-      }
-      setEditingAdvance(null);
+      await axios.post('/api/large-advances/', advanceData);
       await fetchAdvances();
       await fetchBalance();
       resetForm();
@@ -155,8 +148,50 @@ function LargeAdvancesPage() {
     }
   };
 
-  const handleEdit = (advance: LargeAdvance) => {
-    setEditingAdvance(advance);
+  const handleStartInlineEdit = (advance: LargeAdvance) => {
+    setEditingAdvanceId(advance.id);
+    setEditPersonId(advance.person_id);
+    setEditAmount(advance.amount);
+    setEditDate(format(new Date(advance.date), 'yyyy-MM-dd'));
+    setEditDescription(advance.description || '');
+  };
+
+  const handleCancelInlineEdit = () => {
+    setEditingAdvanceId(null);
+    setEditPersonId('');
+    setEditAmount('');
+    setEditDate('');
+    setEditDescription('');
+  };
+
+  const handleSaveInlineEdit = async (advanceId: number) => {
+    if (editPersonId === '' || editAmount === '' || !editDate) {
+      setError('Persona, importo e data sono obbligatori.');
+      return;
+    }
+    if (typeof editAmount !== 'number' || !Number.isFinite(editAmount) || editAmount <= 0) {
+      setError("L'importo deve essere un numero positivo.");
+      return;
+    }
+
+    setInlineSaving(true);
+    setError(null);
+    try {
+      await axios.put(`/api/large-advances/${advanceId}`, {
+        person_id: Number(editPersonId),
+        amount: Number(editAmount),
+        date: editDate,
+        description: editDescription.trim() || null,
+      });
+      handleCancelInlineEdit();
+      await fetchAdvances();
+      await fetchBalance();
+    } catch (saveError) {
+      console.error('Error updating large advance:', saveError);
+      setError('Errore durante il salvataggio modifica.');
+    } finally {
+      setInlineSaving(false);
+    }
   };
 
   const handleDelete = async (advanceId: number) => {
@@ -164,7 +199,11 @@ function LargeAdvancesPage() {
 
     try {
       await axios.delete(`/api/large-advances/${advanceId}`);
-      window.location.reload();
+      if (editingAdvanceId === advanceId) {
+        handleCancelInlineEdit();
+      }
+      await fetchAdvances();
+      await fetchBalance();
     } catch (error) {
       console.error('Error deleting advance:', error);
     }
@@ -236,7 +275,7 @@ function LargeAdvancesPage() {
         <Grid item xs={12} md={8}>
           <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
             <Typography variant="h6" gutterBottom>
-              {editingAdvance ? 'Modifica Anticipo' : 'Aggiungi Nuovo Anticipo'}
+              Aggiungi Nuovo Anticipo
             </Typography>
             <Box component="form" onSubmit={handleSubmit}>
               {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -259,7 +298,7 @@ function LargeAdvancesPage() {
                     label="Importo"
                     type="number"
                     value={amount}
-                    onChange={(e) => setAmount(parseFloat(e.target.value))}
+                    onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
                     inputProps={{ step: '0.01' }}
                     required
                   />
@@ -293,13 +332,8 @@ function LargeAdvancesPage() {
                 </Grid>
                 <Grid item xs={12}>
                   <Button type="submit" variant="contained" sx={{ mr: 2 }}>
-                    {editingAdvance ? 'Aggiorna' : 'Aggiungi'}
+                    Aggiungi
                   </Button>
-                  {editingAdvance && (
-                    <Button variant="outlined" onClick={() => setEditingAdvance(null)}>
-                      Annulla
-                    </Button>
-                  )}
                 </Grid>
               </Grid>
             </Box>
@@ -328,27 +362,101 @@ function LargeAdvancesPage() {
                   ) : (
                     advances.map((advance) => (
                       <TableRow key={advance.id}>
-                        <TableCell>{format(new Date(advance.date), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell>{advance.description || '-'}</TableCell>
-                        <TableCell align="right">€ {advance.amount.toFixed(2)}</TableCell>
-                        <TableCell>{advance.person.name}</TableCell>
+                        <TableCell>
+                          {editingAdvanceId === advance.id ? (
+                            <TextField
+                              size="small"
+                              type="date"
+                              value={editDate}
+                              onChange={(e) => setEditDate(e.target.value)}
+                              InputLabelProps={{ shrink: true }}
+                            />
+                          ) : (
+                            format(new Date(advance.date), 'dd/MM/yyyy')
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingAdvanceId === advance.id ? (
+                            <TextField
+                              size="small"
+                              fullWidth
+                              value={editDescription}
+                              onChange={(e) => setEditDescription(e.target.value)}
+                            />
+                          ) : (
+                            advance.description || '-'
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          {editingAdvanceId === advance.id ? (
+                            <TextField
+                              size="small"
+                              type="number"
+                              value={editAmount}
+                              onChange={(e) => setEditAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                              inputProps={{ step: '0.01', min: '0' }}
+                            />
+                          ) : (
+                            <>€ {advance.amount.toFixed(2)}</>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingAdvanceId === advance.id ? (
+                            <FormControl fullWidth size="small">
+                              <InputLabel id={`inline-person-${advance.id}`}>Chi</InputLabel>
+                              <Select
+                                labelId={`inline-person-${advance.id}`}
+                                value={editPersonId}
+                                label="Chi"
+                                onChange={(e) => setEditPersonId(e.target.value as number)}
+                              >
+                                {persons.filter(p => p.name !== 'COMUNE').map((person) => (
+                                  <MenuItem key={person.id} value={person.id}>
+                                    {person.name}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          ) : (
+                            advance.person.name
+                          )}
+                        </TableCell>
                         <TableCell align="center">
-                          <Button
-                            size="small"
-                            startIcon={<EditIcon />}
-                            onClick={() => handleEdit(advance)}
-                            sx={{ mr: 1 }}
-                          >
-                            Modifica
-                          </Button>
-                          <Button
-                            size="small"
-                            color="error"
-                            startIcon={<DeleteIcon />}
-                            onClick={() => handleDelete(advance.id)}
-                          >
-                            Elimina
-                          </Button>
+                          {editingAdvanceId === advance.id ? (
+                            <>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                onClick={() => handleSaveInlineEdit(advance.id)}
+                                disabled={inlineSaving}
+                                sx={{ mr: 1 }}
+                              >
+                                Salva
+                              </Button>
+                              <Button size="small" variant="outlined" onClick={handleCancelInlineEdit}>
+                                Annulla
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="small"
+                                startIcon={<EditIcon />}
+                                onClick={() => handleStartInlineEdit(advance)}
+                                sx={{ mr: 1 }}
+                              >
+                                Modifica
+                              </Button>
+                              <Button
+                                size="small"
+                                color="error"
+                                startIcon={<DeleteIcon />}
+                                onClick={() => handleDelete(advance.id)}
+                              >
+                                Elimina
+                              </Button>
+                            </>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

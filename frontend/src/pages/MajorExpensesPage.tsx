@@ -58,7 +58,7 @@ const EXPENSE_CATEGORIES = [
 function MajorExpensesPage() {
   const [expenses, setExpenses] = useState<MajorExpense[]>([]);
   const [summary, setSummary] = useState<MajorExpenseSummary | null>(null);
-  const [editingExpense, setEditingExpense] = useState<MajorExpense | null>(null);
+  const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
 
   const [amount, setAmount] = useState<number | ''>('');
@@ -68,26 +68,20 @@ function MajorExpensesPage() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [inlineSaving, setInlineSaving] = useState<boolean>(false);
 
   const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
   const [filterCategory, setFilterCategory] = useState<string>('');
+  const [editAmount, setEditAmount] = useState<number | ''>('');
+  const [editDate, setEditDate] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState('Altro');
+  const [editNotes, setEditNotes] = useState('');
 
   useEffect(() => {
     fetchExpenses();
     fetchSummary();
   }, []);
-
-  useEffect(() => {
-    if (editingExpense) {
-      setAmount(editingExpense.amount);
-      setDate(format(new Date(editingExpense.date), 'yyyy-MM-dd'));
-      setDescription(editingExpense.description);
-      setCategory(editingExpense.category);
-      setNotes(editingExpense.notes || '');
-    } else {
-      resetForm();
-    }
-  }, [editingExpense]);
 
   const fetchExpenses = async () => {
     try {
@@ -121,13 +115,12 @@ function MajorExpensesPage() {
   };
 
   const handleOpenDialog = () => {
-    setEditingExpense(null);
+    resetForm();
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setEditingExpense(null);
     resetForm();
   };
 
@@ -155,13 +148,8 @@ function MajorExpensesPage() {
     };
 
     try {
-      if (editingExpense) {
-        await axios.put(`/api/major-expenses/${editingExpense.id}`, expenseData);
-        setSuccessMessage('Spesa aggiornata con successo.');
-      } else {
-        await axios.post('/api/major-expenses/', expenseData);
-        setSuccessMessage('Spesa aggiunta con successo.');
-      }
+      await axios.post('/api/major-expenses/', expenseData);
+      setSuccessMessage('Spesa aggiunta con successo.');
       handleCloseDialog();
       await fetchExpenses();
       await fetchSummary();
@@ -171,9 +159,54 @@ function MajorExpensesPage() {
     }
   };
 
-  const handleEdit = (expense: MajorExpense) => {
-    setEditingExpense(expense);
-    setOpenDialog(true);
+  const handleStartInlineEdit = (expense: MajorExpense) => {
+    setEditingExpenseId(expense.id);
+    setEditAmount(expense.amount);
+    setEditDate(format(new Date(expense.date), 'yyyy-MM-dd'));
+    setEditDescription(expense.description);
+    setEditCategory(expense.category);
+    setEditNotes(expense.notes || '');
+  };
+
+  const handleCancelInlineEdit = () => {
+    setEditingExpenseId(null);
+    setEditAmount('');
+    setEditDate('');
+    setEditDescription('');
+    setEditCategory('Altro');
+    setEditNotes('');
+  };
+
+  const handleSaveInlineEdit = async (id: number) => {
+    if (editAmount === '' || !editDate || !editDescription.trim() || !editCategory) {
+      setError('Importo, data, descrizione e categoria sono obbligatori.');
+      return;
+    }
+    if (typeof editAmount !== 'number' || !Number.isFinite(editAmount) || editAmount <= 0) {
+      setError("L'importo deve essere un numero positivo.");
+      return;
+    }
+
+    setInlineSaving(true);
+    setError(null);
+    try {
+      await axios.put(`/api/major-expenses/${id}`, {
+        amount: Number(editAmount),
+        date: editDate,
+        description: editDescription.trim(),
+        category: editCategory,
+        notes: editNotes.trim() ? editNotes.trim() : null,
+      });
+      handleCancelInlineEdit();
+      setSuccessMessage('Spesa aggiornata con successo.');
+      await fetchExpenses();
+      await fetchSummary();
+    } catch (saveError) {
+      console.error('Error updating major expense:', saveError);
+      setError('Errore durante il salvataggio.');
+    } finally {
+      setInlineSaving(false);
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -183,8 +216,8 @@ function MajorExpensesPage() {
 
     try {
       await axios.delete(`/api/major-expenses/${id}`);
-      if (editingExpense?.id === id) {
-        handleCloseDialog();
+      if (editingExpenseId === id) {
+        handleCancelInlineEdit();
       }
       setSuccessMessage('Spesa eliminata con successo.');
       await fetchExpenses();
@@ -331,28 +364,105 @@ function MajorExpensesPage() {
             ) : (
               filteredExpenses.map((expense) => (
                 <TableRow key={expense.id} hover>
-                  <TableCell>{format(new Date(expense.date), 'dd/MM/yyyy')}</TableCell>
-                  <TableCell>{expense.description}</TableCell>
+                  <TableCell>
+                    {editingExpenseId === expense.id ? (
+                      <TextField
+                        size="small"
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    ) : (
+                      format(new Date(expense.date), 'dd/MM/yyyy')
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingExpenseId === expense.id ? (
+                      <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                        <TextField
+                          size="small"
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          placeholder="Descrizione"
+                        />
+                        <FormControl size="small">
+                          <InputLabel>Categoria</InputLabel>
+                          <Select
+                            value={editCategory}
+                            label="Categoria"
+                            onChange={(e) => setEditCategory(e.target.value)}
+                          >
+                            {EXPENSE_CATEGORIES.map((cat) => (
+                              <MenuItem key={cat} value={cat}>
+                                {cat}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <TextField
+                          size="small"
+                          value={editNotes}
+                          onChange={(e) => setEditNotes(e.target.value)}
+                          placeholder="Note"
+                          multiline
+                          minRows={1}
+                          maxRows={3}
+                        />
+                      </Box>
+                    ) : (
+                      expense.description
+                    )}
+                  </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                    €{expense.amount.toFixed(2)}
+                    {editingExpenseId === expense.id ? (
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={editAmount}
+                        onChange={(e) => setEditAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                        inputProps={{ step: '0.01', min: '0' }}
+                      />
+                    ) : (
+                      <>€{expense.amount.toFixed(2)}</>
+                    )}
                   </TableCell>
                   <TableCell align="center">
-                    <Button
-                      size="small"
-                      startIcon={<EditIcon />}
-                      onClick={() => handleEdit(expense)}
-                      sx={{ mr: 1 }}
-                    >
-                      Modifica
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      startIcon={<DeleteIcon />}
-                      onClick={() => handleDelete(expense.id)}
-                    >
-                      Elimina
-                    </Button>
+                    {editingExpenseId === expense.id ? (
+                      <>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => handleSaveInlineEdit(expense.id)}
+                          disabled={inlineSaving}
+                          sx={{ mr: 1 }}
+                        >
+                          Salva
+                        </Button>
+                        <Button size="small" variant="outlined" onClick={handleCancelInlineEdit}>
+                          Annulla
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          size="small"
+                          startIcon={<EditIcon />}
+                          onClick={() => handleStartInlineEdit(expense)}
+                          sx={{ mr: 1 }}
+                        >
+                          Modifica
+                        </Button>
+                        <Button
+                          size="small"
+                          color="error"
+                          startIcon={<DeleteIcon />}
+                          onClick={() => handleDelete(expense.id)}
+                        >
+                          Elimina
+                        </Button>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -392,9 +502,7 @@ function MajorExpensesPage() {
       )}
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingExpense ? 'Modifica Spesa' : 'Aggiungi Spesa'}
-        </DialogTitle>
+        <DialogTitle>Aggiungi Spesa</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {error && <Alert severity="error">{error}</Alert>}
@@ -454,7 +562,7 @@ function MajorExpensesPage() {
         <DialogActions>
           <Button onClick={handleCloseDialog}>Annulla</Button>
           <Button onClick={handleSubmit} variant="contained" color="primary">
-            {editingExpense ? 'Aggiorna' : 'Aggiungi'}
+            Aggiungi
           </Button>
         </DialogActions>
       </Dialog>
