@@ -117,12 +117,12 @@ const TransactionList: React.FC<TransactionListProps> = ({
       <Table size="small" sx={{ minWidth: 650, tableLayout: 'fixed' }} aria-label="transaction table">
         <TableHead>
           <TableRow>
-            <TableCell sx={{ width: '23%' }}>Descrizione</TableCell>
-            <TableCell sx={{ width: '20%' }}>Note</TableCell>
+            <TableCell sx={{ width: '26%' }}>Descrizione</TableCell>
             <TableCell align="right" sx={{ width: '12%' }}>Importo</TableCell>
-            <TableCell sx={{ width: '17%' }}>Categoria</TableCell>
+            <TableCell sx={{ width: '18%' }}>Categoria</TableCell>
             <TableCell sx={{ width: '12%' }}>Pagante</TableCell>
-            <TableCell align="center" sx={{ width: '16%' }}>Azioni</TableCell>
+            <TableCell align="center" sx={{ width: '17%' }}>Azioni</TableCell>
+            <TableCell sx={{ width: '15%' }}>Note</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -133,7 +133,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
           ) : (
             transactions.map((transaction) => (
               <TableRow key={transaction.id}>
-                <TableCell>
+                <TableCell align="right">
                   {editingId === transaction.id ? (
                     <TextField
                       size="small"
@@ -147,24 +147,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   )}
                 </TableCell>
                 <TableCell>
-                  {editingId === transaction.id ? (
-                    <TextField
-                      size="small"
-                      variant="standard"
-                      fullWidth
-                      multiline
-                      minRows={1}
-                      maxRows={2}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                    />
-                  ) : transaction.notes ? (
-                    <Typography variant="body2">{transaction.notes}</Typography>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">-</Typography>
-                  )}
-                </TableCell>
-                <TableCell align="right">
                   {editingId === transaction.id ? (
                     <TextField
                       size="small"
@@ -267,6 +249,24 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         Elimina
                       </Button>
                     </>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {editingId === transaction.id ? (
+                    <TextField
+                      size="small"
+                      variant="standard"
+                      fullWidth
+                      multiline
+                      minRows={1}
+                      maxRows={2}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                  ) : transaction.notes ? (
+                    <Typography variant="body2">{transaction.notes}</Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">-</Typography>
                   )}
                 </TableCell>
               </TableRow>
