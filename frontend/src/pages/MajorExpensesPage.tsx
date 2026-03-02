@@ -339,15 +339,17 @@ function MajorExpensesPage() {
       </Paper>
 
       <TableContainer component={Paper}>
-        <Table>
+        <Table size="small" sx={{ tableLayout: 'fixed' }}>
           <TableHead sx={{ backgroundColor: '#1976d2', color: 'white' }}>
             <TableRow>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Data</TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Descrizione</TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white' }} align="right">
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', width: '14%' }}>Data</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', width: '25%' }}>Descrizione</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', width: '18%' }}>Categoria</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', width: '18%' }}>Note</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', width: '12%' }} align="right">
                 Importo
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white' }} align="center">
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', width: '13%' }} align="center">
                 Azioni
               </TableCell>
             </TableRow>
@@ -355,7 +357,7 @@ function MajorExpensesPage() {
           <TableBody>
             {filteredExpenses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                   <Typography color="textSecondary">
                     Nessuna spesa trovata per i filtri selezionati
                   </Typography>
@@ -368,6 +370,7 @@ function MajorExpensesPage() {
                     {editingExpenseId === expense.id ? (
                       <TextField
                         size="small"
+                        variant="standard"
                         type="date"
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
@@ -379,45 +382,57 @@ function MajorExpensesPage() {
                   </TableCell>
                   <TableCell>
                     {editingExpenseId === expense.id ? (
-                      <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
-                        <TextField
-                          size="small"
-                          value={editDescription}
-                          onChange={(e) => setEditDescription(e.target.value)}
-                          placeholder="Descrizione"
-                        />
-                        <FormControl size="small">
-                          <InputLabel>Categoria</InputLabel>
-                          <Select
-                            value={editCategory}
-                            label="Categoria"
-                            onChange={(e) => setEditCategory(e.target.value)}
-                          >
-                            {EXPENSE_CATEGORIES.map((cat) => (
-                              <MenuItem key={cat} value={cat}>
-                                {cat}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                        <TextField
-                          size="small"
-                          value={editNotes}
-                          onChange={(e) => setEditNotes(e.target.value)}
-                          placeholder="Note"
-                          multiline
-                          minRows={1}
-                          maxRows={3}
-                        />
-                      </Box>
+                      <TextField
+                        size="small"
+                        variant="standard"
+                        fullWidth
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                      />
                     ) : (
                       expense.description
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingExpenseId === expense.id ? (
+                      <FormControl size="small" fullWidth>
+                        <InputLabel>Categoria</InputLabel>
+                        <Select
+                          variant="standard"
+                          value={editCategory}
+                          label="Categoria"
+                          onChange={(e) => setEditCategory(e.target.value)}
+                        >
+                          {EXPENSE_CATEGORIES.map((cat) => (
+                            <MenuItem key={cat} value={cat}>
+                              {cat}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    ) : (
+                      expense.category
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingExpenseId === expense.id ? (
+                      <TextField
+                        size="small"
+                        variant="standard"
+                        fullWidth
+                        value={editNotes}
+                        onChange={(e) => setEditNotes(e.target.value)}
+                        placeholder="-"
+                      />
+                    ) : (
+                      expense.notes || '-'
                     )}
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 'bold' }}>
                     {editingExpenseId === expense.id ? (
                       <TextField
                         size="small"
+                        variant="standard"
                         type="number"
                         value={editAmount}
                         onChange={(e) => setEditAmount(e.target.value === '' ? '' : Number(e.target.value))}

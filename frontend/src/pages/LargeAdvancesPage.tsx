@@ -342,14 +342,14 @@ function LargeAdvancesPage() {
           {/* List */}
           <Paper elevation={3}>
             <TableContainer>
-              <Table>
+              <Table size="small" sx={{ tableLayout: 'fixed' }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Data</TableCell>
-                    <TableCell>Descrizione</TableCell>
-                    <TableCell align="right">Importo</TableCell>
-                    <TableCell>Chi</TableCell>
-                    <TableCell align="center">Azioni</TableCell>
+                    <TableCell sx={{ width: '16%' }}>Data</TableCell>
+                    <TableCell sx={{ width: '32%' }}>Descrizione</TableCell>
+                    <TableCell align="right" sx={{ width: '14%' }}>Importo</TableCell>
+                    <TableCell sx={{ width: '18%' }}>Chi</TableCell>
+                    <TableCell align="center" sx={{ width: '20%' }}>Azioni</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -366,6 +366,7 @@ function LargeAdvancesPage() {
                           {editingAdvanceId === advance.id ? (
                             <TextField
                               size="small"
+                              variant="standard"
                               type="date"
                               value={editDate}
                               onChange={(e) => setEditDate(e.target.value)}
@@ -379,6 +380,7 @@ function LargeAdvancesPage() {
                           {editingAdvanceId === advance.id ? (
                             <TextField
                               size="small"
+                              variant="standard"
                               fullWidth
                               value={editDescription}
                               onChange={(e) => setEditDescription(e.target.value)}
@@ -391,6 +393,7 @@ function LargeAdvancesPage() {
                           {editingAdvanceId === advance.id ? (
                             <TextField
                               size="small"
+                              variant="standard"
                               type="number"
                               value={editAmount}
                               onChange={(e) => setEditAmount(e.target.value === '' ? '' : Number(e.target.value))}
@@ -405,6 +408,7 @@ function LargeAdvancesPage() {
                             <FormControl fullWidth size="small">
                               <InputLabel id={`inline-person-${advance.id}`}>Chi</InputLabel>
                               <Select
+                                variant="standard"
                                 labelId={`inline-person-${advance.id}`}
                                 value={editPersonId}
                                 label="Chi"

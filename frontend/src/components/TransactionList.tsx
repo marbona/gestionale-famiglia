@@ -114,15 +114,15 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
   return (
     <TableContainer component={Paper}>
-      <Table sx={{ minWidth: 650 }} aria-label="transaction table">
+      <Table size="small" sx={{ minWidth: 650, tableLayout: 'fixed' }} aria-label="transaction table">
         <TableHead>
           <TableRow>
-            <TableCell>Descrizione</TableCell>
-            <TableCell>Note</TableCell>
-            <TableCell align="right">Importo</TableCell>
-            <TableCell>Categoria</TableCell>
-            <TableCell>Pagante</TableCell>
-            <TableCell align="center">Azioni</TableCell>
+            <TableCell sx={{ width: '23%' }}>Descrizione</TableCell>
+            <TableCell sx={{ width: '20%' }}>Note</TableCell>
+            <TableCell align="right" sx={{ width: '12%' }}>Importo</TableCell>
+            <TableCell sx={{ width: '17%' }}>Categoria</TableCell>
+            <TableCell sx={{ width: '12%' }}>Pagante</TableCell>
+            <TableCell align="center" sx={{ width: '16%' }}>Azioni</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -137,6 +137,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   {editingId === transaction.id ? (
                     <TextField
                       size="small"
+                      variant="standard"
                       fullWidth
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
@@ -149,10 +150,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   {editingId === transaction.id ? (
                     <TextField
                       size="small"
+                      variant="standard"
                       fullWidth
                       multiline
                       minRows={1}
-                      maxRows={3}
+                      maxRows={2}
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                     />
@@ -166,6 +168,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   {editingId === transaction.id ? (
                     <TextField
                       size="small"
+                      variant="standard"
                       type="number"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
@@ -180,6 +183,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     <FormControl size="small" fullWidth>
                       <InputLabel id={`cat-inline-${transaction.id}`}>Categoria</InputLabel>
                       <Select
+                        variant="standard"
                         labelId={`cat-inline-${transaction.id}`}
                         value={categoryId}
                         label="Categoria"
@@ -209,6 +213,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     <FormControl size="small" fullWidth>
                       <InputLabel id={`person-inline-${transaction.id}`}>Pagante</InputLabel>
                       <Select
+                        variant="standard"
                         labelId={`person-inline-${transaction.id}`}
                         value={personId}
                         label="Pagante"
@@ -245,6 +250,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     <>
                       <Button
                         variant="outlined"
+                        size="small"
                         startIcon={<EditIcon />}
                         onClick={() => startEdit(transaction)}
                         sx={{ mr: 1 }}
@@ -253,6 +259,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       </Button>
                       <Button
                         variant="outlined"
+                        size="small"
                         color="error"
                         startIcon={<DeleteIcon />}
                         onClick={() => { if (window.confirm('Sei sicuro di voler eliminare questa transazione?')) onDelete(transaction.id); }}
