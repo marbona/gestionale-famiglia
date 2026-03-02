@@ -139,7 +139,9 @@ class LargeAdvance(LargeAdvanceBase):
 class MonthlySummary(BaseModel):
     year: int
     month: int
+    calculated_income: float
     total_income: float
+    is_income_overridden: bool
     total_expenses: float
     balance: float
     expenses_by_category: Dict[str, float]
@@ -163,6 +165,17 @@ class LargeAdvancesBalanceSummary(BaseModel):
     total_advances: float
     difference: float
 
+class MonthlyTrendPoint(BaseModel):
+    year: int
+    month: int
+    label: str
+    total_income: float
+    total_expenses: float
+    balance: float
+    positive_balance: float
+    negative_balance: float
+    utilities_expenses: float
+
 class PeriodStatistics(BaseModel):
     start_date: date
     end_date: date
@@ -176,6 +189,7 @@ class PeriodStatistics(BaseModel):
     anna_advance_details: List[TransactionDetail]
     current_month_summary: MonthlySummary
     large_advances_balance: LargeAdvancesBalanceSummary
+    monthly_trends: List[MonthlyTrendPoint]
     new_major_expenses_count: int
     new_major_expenses_total: float
     major_expenses: List['MajorExpense'] = []
@@ -211,6 +225,18 @@ class MonthTemplateCopyRequest(BaseModel):
 class MonthTemplateCopyResponse(BaseModel):
     copied_count: int
     created_ids: List[int]
+
+
+class MonthlyIncomeOverrideUpsert(BaseModel):
+    total_income: Optional[float] = None
+
+
+class MonthlyIncomeOverrideConfig(BaseModel):
+    year: int
+    month: int
+    calculated_income: float
+    total_income: float
+    is_overridden: bool
 
 
 class BackupTransactionItem(BaseModel):

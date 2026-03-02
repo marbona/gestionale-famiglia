@@ -25,6 +25,18 @@ import {
   FormControlLabel,
   Switch,
 } from '@mui/material';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  LineChart,
+  Line,
+} from 'recharts';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
@@ -77,7 +89,9 @@ interface PeriodStatistics {
   current_month_summary: {
     year: number;
     month: number;
+    calculated_income: number;
     total_income: number;
+    is_income_overridden: boolean;
     total_expenses: number;
     balance: number;
     person_contributions: { [key: string]: { paid: number; needs_to_pay: number } };
@@ -88,6 +102,17 @@ interface PeriodStatistics {
     total_advances: number;
     difference: number;
   };
+  monthly_trends: {
+    year: number;
+    month: number;
+    label: string;
+    total_income: number;
+    total_expenses: number;
+    balance: number;
+    positive_balance: number;
+    negative_balance: number;
+    utilities_expenses: number;
+  }[];
   new_major_expenses_count: number;
   new_major_expenses_total: number;
   major_expenses: {
@@ -848,6 +873,59 @@ function AdminPage() {
                         </TableBody>
                       </Table>
                     </TableContainer>
+                  </Box>
+                </Paper>
+
+                <Paper sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>Andamento Mensile: Saldo e Bollette</Typography>
+                  <TableContainer sx={{ mb: 2 }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Mese</TableCell>
+                          <TableCell align="right">Saldo</TableCell>
+                          <TableCell align="right">Spesa Bollette</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {statistics.monthly_trends.map((point) => (
+                          <TableRow key={point.label}>
+                            <TableCell>{point.label}</TableCell>
+                            <TableCell align="right">€ {point.balance.toFixed(2)}</TableCell>
+                            <TableCell align="right">€ {point.utilities_expenses.toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+
+                  <Typography variant="body2" sx={{ mb: 1 }}>Bilancio positivo/negativo per mese</Typography>
+                  <Box sx={{ width: '100%', height: 280, mb: 2 }}>
+                    <ResponsiveContainer>
+                      <BarChart data={statistics.monthly_trends}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="label" />
+                        <YAxis />
+                        <Tooltip formatter={(value: any) => `€ ${Number(value).toFixed(2)}`} />
+                        <Legend />
+                        <Bar dataKey="positive_balance" name="Saldo positivo" fill="#2e7d32" />
+                        <Bar dataKey="negative_balance" name="Saldo negativo" fill="#c62828" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Box>
+
+                  <Typography variant="body2" sx={{ mb: 1 }}>Andamento spesa bollette</Typography>
+                  <Box sx={{ width: '100%', height: 280 }}>
+                    <ResponsiveContainer>
+                      <LineChart data={statistics.monthly_trends}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="label" />
+                        <YAxis />
+                        <Tooltip formatter={(value: any) => `€ ${Number(value).toFixed(2)}`} />
+                        <Legend />
+                        <Line type="monotone" dataKey="utilities_expenses" name="Bollette" stroke="#ef6c00" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </Box>
                 </Paper>
 

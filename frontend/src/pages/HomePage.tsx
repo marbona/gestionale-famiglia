@@ -61,7 +61,9 @@ interface PersonContributions {
 interface MonthlySummary {
   year: number;
   month: number;
+  calculated_income: number;
   total_income: number;
+  is_income_overridden: boolean;
   total_expenses: number;
   balance: number;
   expenses_by_category: CategoryExpenses;
@@ -89,6 +91,7 @@ function HomePage() {
   const [selectedMonth, setSelectedMonth] = useState<number>(currentInitialMonth);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [incomeSaving, setIncomeSaving] = useState<boolean>(false);
 
   const previousMonth = getPreviousMonthYear();
   const [copySourceYear, setCopySourceYear] = useState<number>(previousMonth.year);
@@ -273,6 +276,29 @@ function HomePage() {
     }
   };
 
+  const handleSaveIncomeOverride = async (value: number | null) => {
+    if (value !== null && (!Number.isFinite(value) || value < 0)) {
+      setSummaryError('Inserisci un importo valido maggiore o uguale a 0.');
+      return;
+    }
+
+    setIncomeSaving(true);
+    try {
+      await axios.put('/api/summary/monthly-income/', { total_income: value }, {
+        params: {
+          year: selectedYear,
+          month: selectedMonth,
+        },
+      });
+      await fetchMonthlySummary();
+    } catch (error) {
+      console.error('Error saving monthly income override:', error);
+      setSummaryError('Errore nel salvataggio delle entrate mensili.');
+    } finally {
+      setIncomeSaving(false);
+    }
+  };
+
   const orderedTransactions = useMemo(() => {
     return [...transactions].sort((a, b) => {
       const byCategory = a.category.name.localeCompare(b.category.name, 'it');
@@ -317,6 +343,8 @@ function HomePage() {
               setYear={setSelectedYear}
               setMonth={setSelectedMonth}
               summaryError={summaryError}
+              onSaveIncomeOverride={handleSaveIncomeOverride}
+              incomeSaving={incomeSaving}
             />
           </Box>
         </Grid>

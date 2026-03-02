@@ -10,7 +10,9 @@ interface CategoryExpenses {
 interface MonthlySummary {
     year: number;
     month: number;
+    calculated_income: number;
     total_income: number;
+    is_income_overridden: boolean;
     total_expenses: number;
     balance: number;
     expenses_by_category: CategoryExpenses;

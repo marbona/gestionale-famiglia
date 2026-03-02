@@ -43,16 +43,74 @@ def generate_pie_chart_base64(data: dict, title: str) -> str:
     return f"data:image/png;base64,{image_base64}"
 
 
+def generate_balance_trend_chart_base64(monthly_trends: list[schemas.MonthlyTrendPoint]) -> str:
+    if not HAS_MATPLOTLIB or not monthly_trends:
+        return ""
+
+    labels = [point.label for point in monthly_trends]
+    positive = [point.positive_balance for point in monthly_trends]
+    negative = [point.negative_balance for point in monthly_trends]
+    x_positions = list(range(len(labels)))
+
+    fig, ax = plt.subplots(figsize=(10, 4.5))
+    ax.bar(x_positions, positive, color='#2e7d32', label='Saldo positivo')
+    ax.bar(x_positions, negative, color='#c62828', label='Saldo negativo')
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+    ax.set_title('Andamento bilancio mensile')
+    ax.set_ylabel('Euro')
+    ax.legend()
+    ax.grid(axis='y', alpha=0.2)
+
+    buffer = io.BytesIO()
+    plt.tight_layout()
+    plt.savefig(buffer, format='png', bbox_inches='tight')
+    buffer.seek(0)
+    image_base64 = base64.b64encode(buffer.read()).decode()
+    plt.close(fig)
+    return f"data:image/png;base64,{image_base64}"
+
+
+def generate_utilities_trend_chart_base64(monthly_trends: list[schemas.MonthlyTrendPoint]) -> str:
+    if not HAS_MATPLOTLIB or not monthly_trends:
+        return ""
+
+    labels = [point.label for point in monthly_trends]
+    utilities = [point.utilities_expenses for point in monthly_trends]
+    x_positions = list(range(len(labels)))
+
+    fig, ax = plt.subplots(figsize=(10, 4.5))
+    ax.plot(x_positions, utilities, color='#ef6c00', marker='o', linewidth=2)
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+    ax.set_title('Andamento spesa bollette')
+    ax.set_ylabel('Euro')
+    ax.grid(axis='y', alpha=0.2)
+
+    buffer = io.BytesIO()
+    plt.tight_layout()
+    plt.savefig(buffer, format='png', bbox_inches='tight')
+    buffer.seek(0)
+    image_base64 = base64.b64encode(buffer.read()).decode()
+    plt.close(fig)
+    return f"data:image/png;base64,{image_base64}"
+
+
 def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: bool = True) -> str:
     """Generate HTML report from statistics"""
 
     # Generate chart if matplotlib is available
     chart_data_url = ""
+    balance_trend_chart_url = ""
+    utilities_trend_chart_url = ""
     if include_charts and HAS_MATPLOTLIB and statistics.expenses_by_category:
         chart_data_url = generate_pie_chart_base64(
             statistics.expenses_by_category,
             "Spese per Categoria"
         )
+    if include_charts and HAS_MATPLOTLIB and statistics.monthly_trends:
+        balance_trend_chart_url = generate_balance_trend_chart_base64(statistics.monthly_trends)
+        utilities_trend_chart_url = generate_utilities_trend_chart_base64(statistics.monthly_trends)
 
     diff = statistics.large_advances_balance.difference
     if diff > 0:
@@ -175,6 +233,46 @@ def generate_report_html(statistics: schemas.PeriodStatistics, include_charts: b
 
         {'<div class="card"><h2>Grafico Spese per Categoria (Periodo Selezionato)</h2><div class="chart-container"><img src="' + chart_data_url + '" alt="Grafico Spese"></div></div>' if chart_data_url else ''}
 
+        <div class="card">
+            <h2>Andamento Mensile (Periodo Selezionato)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mese</th>
+                        <th style="text-align: right;">Saldo</th>
+                        <th style="text-align: right;">Spesa Bollette</th>
+                    </tr>
+                </thead>
+                <tbody>
+    """
+
+    for point in statistics.monthly_trends:
+        html += f"""
+                    <tr>
+                        <td>{escape(point.label)}</td>
+                        <td style="text-align: right;">€ {point.balance:.2f}</td>
+                        <td style="text-align: right;">€ {point.utilities_expenses:.2f}</td>
+                    </tr>
+        """
+
+    html += """
+                </tbody>
+            </table>
+        </div>
+    """
+
+    if balance_trend_chart_url:
+        html += (
+            '<div class="card"><h2>Grafico Bilancio Positivo/Negativo</h2>'
+            f'<div class="chart-container"><img src="{balance_trend_chart_url}" alt="Andamento Bilancio"></div></div>'
+        )
+    if utilities_trend_chart_url:
+        html += (
+            '<div class="card"><h2>Grafico Spesa Bollette</h2>'
+            f'<div class="chart-container"><img src="{utilities_trend_chart_url}" alt="Andamento Bollette"></div></div>'
+        )
+
+    html += """
         <div class="card">
             <h2>Spese per Categoria (Periodo Selezionato)</h2>
             <table>

@@ -237,8 +237,38 @@ def delete_transaction_endpoint(transaction_id: int, db: Session = Depends(get_d
 def get_monthly_summary_endpoint(
     year: int, month: int, db: Session = Depends(get_db)
 ):
+    if month < 1 or month > 12:
+        raise HTTPException(status_code=400, detail="month must be between 1 and 12")
+    if year < 2000:
+        raise HTTPException(status_code=400, detail="year must be >= 2000")
     summary = crud.get_monthly_summary(db, year, month)
     return summary
+
+
+@app.get("/api/summary/monthly-income/", response_model=schemas.MonthlyIncomeOverrideConfig)
+def get_monthly_income_config_endpoint(year: int, month: int, db: Session = Depends(get_db)):
+    if month < 1 or month > 12:
+        raise HTTPException(status_code=400, detail="month must be between 1 and 12")
+    if year < 2000:
+        raise HTTPException(status_code=400, detail="year must be >= 2000")
+    return crud.get_monthly_income_config(db, year, month)
+
+
+@app.put("/api/summary/monthly-income/", response_model=schemas.MonthlyIncomeOverrideConfig)
+def update_monthly_income_config_endpoint(
+    year: int,
+    month: int,
+    payload: schemas.MonthlyIncomeOverrideUpsert,
+    db: Session = Depends(get_db)
+):
+    if month < 1 or month > 12:
+        raise HTTPException(status_code=400, detail="month must be between 1 and 12")
+    if year < 2000:
+        raise HTTPException(status_code=400, detail="year must be >= 2000")
+    if payload.total_income is not None and payload.total_income < 0:
+        raise HTTPException(status_code=400, detail="total_income must be >= 0")
+    crud.upsert_monthly_income_override(db, year, month, payload.total_income)
+    return crud.get_monthly_income_config(db, year, month)
 
 
 # --- Large Advance Endpoints ---

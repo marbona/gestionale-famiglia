@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, ForeignKey, Enum, Boolean, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, ForeignKey, Enum, Boolean, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 import enum
 
@@ -45,6 +45,15 @@ class AppSettings(Base):
     backup_frequency_hours = Column(Integer, default=24, nullable=False)
     backup_recipients = Column(Text)  # JSON array of email addresses
     backup_last_sent_at = Column(DateTime, nullable=True)
+
+class MonthlyIncomeOverride(Base):
+    __tablename__ = "monthly_income_overrides"
+    __table_args__ = (UniqueConstraint("year", "month", name="uq_monthly_income_overrides_year_month"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    month = Column(Integer, nullable=False, index=True)
+    total_income = Column(Float, nullable=False)
 
 class Category(Base):
     __tablename__ = "categories"

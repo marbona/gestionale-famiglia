@@ -15,6 +15,21 @@ def _get_or_create_comune_person(db: Session) -> models.Person:
     db.flush()
     return comune
 
+
+def _iter_months(start_date: date, end_date: date):
+    year = start_date.year
+    month = start_date.month
+    end_year = end_date.year
+    end_month = end_date.month
+
+    while (year, month) <= (end_year, end_month):
+        yield year, month
+        if month == 12:
+            year += 1
+            month = 1
+        else:
+            month += 1
+
 # --- Category CRUD ---
 def get_category(db: Session, category_id: int):
     return db.query(models.Category).filter(models.Category.id == category_id).first()
@@ -122,12 +137,16 @@ def get_monthly_summary(db: Session, year: int, month: int):
                 "needs_to_pay": needs_to_pay
             }
 
+    effective_income, calculated_income, is_overridden = get_effective_monthly_income(db, year, month)
+
     return schemas.MonthlySummary(
         year=year,
         month=month,
-        total_income=settings.monthly_income,
+        calculated_income=calculated_income,
+        total_income=effective_income,
+        is_income_overridden=is_overridden,
         total_expenses=total_expenses,
-        balance=settings.monthly_income - total_expenses,
+        balance=effective_income - total_expenses,
         expenses_by_category=expenses_by_category,
         person_contributions=person_contributions
     )
@@ -255,6 +274,48 @@ def get_app_settings(db: Session):
     # Calculate monthly_income as 2 * contribution (Marco + Anna)
     settings.monthly_income = settings.monthly_contribution_per_person * 2
     return settings
+
+
+def get_monthly_income_override(db: Session, year: int, month: int):
+    return db.query(models.MonthlyIncomeOverride).filter(
+        models.MonthlyIncomeOverride.year == year,
+        models.MonthlyIncomeOverride.month == month,
+    ).first()
+
+
+def get_effective_monthly_income(db: Session, year: int, month: int):
+    settings = get_app_settings(db)
+    calculated_income = settings.monthly_contribution_per_person * 2
+    override = get_monthly_income_override(db, year, month)
+    if override:
+        return float(override.total_income), float(calculated_income), True
+    return float(calculated_income), float(calculated_income), False
+
+
+def upsert_monthly_income_override(db: Session, year: int, month: int, total_income: float | None):
+    existing = get_monthly_income_override(db, year, month)
+    if total_income is None:
+        if existing:
+            db.delete(existing)
+            db.commit()
+        return
+
+    if existing:
+        existing.total_income = total_income
+    else:
+        db.add(models.MonthlyIncomeOverride(year=year, month=month, total_income=total_income))
+    db.commit()
+
+
+def get_monthly_income_config(db: Session, year: int, month: int):
+    effective_income, calculated_income, is_overridden = get_effective_monthly_income(db, year, month)
+    return schemas.MonthlyIncomeOverrideConfig(
+        year=year,
+        month=month,
+        calculated_income=calculated_income,
+        total_income=effective_income,
+        is_overridden=is_overridden,
+    )
 
 def update_app_settings(db: Session, settings: schemas.AppSettingsUpdate):
     db_settings = db.query(models.AppSettings).first()
@@ -419,6 +480,35 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
         for exp in major_expenses_raw
     ]
 
+    monthly_trends = []
+    for year, month in _iter_months(start_date, end_date):
+        month_expenses = db.query(func.sum(models.Transaction.amount)).filter(
+            extract('year', models.Transaction.date) == year,
+            extract('month', models.Transaction.date) == month
+        ).scalar() or 0.0
+
+        utilities_expenses = db.query(func.sum(models.Transaction.amount)).join(models.Category).filter(
+            extract('year', models.Transaction.date) == year,
+            extract('month', models.Transaction.date) == month,
+            models.Category.name.ilike('%bollette%')
+        ).scalar() or 0.0
+
+        month_income, _, _ = get_effective_monthly_income(db, year, month)
+        month_balance = month_income - month_expenses
+        monthly_trends.append(
+            schemas.MonthlyTrendPoint(
+                year=year,
+                month=month,
+                label=f"{month:02d}/{year}",
+                total_income=month_income,
+                total_expenses=float(month_expenses),
+                balance=float(month_balance),
+                positive_balance=float(max(month_balance, 0.0)),
+                negative_balance=float(abs(min(month_balance, 0.0))),
+                utilities_expenses=float(utilities_expenses),
+            )
+        )
+
     # Include the same monthly summary logic used in Home page for current month.
     today = date.today()
     current_month_summary = get_monthly_summary(db, today.year, today.month)
@@ -440,6 +530,7 @@ def get_period_statistics(db: Session, start_date: date, end_date: date):
         anna_advance_details=anna_advance_details,
         current_month_summary=current_month_summary,
         large_advances_balance=large_advances_balance,
+        monthly_trends=monthly_trends,
         new_major_expenses_count=len(major_expenses),
         new_major_expenses_total=new_major_expenses_total,
         major_expenses=major_expenses
