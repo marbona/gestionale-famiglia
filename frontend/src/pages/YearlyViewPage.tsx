@@ -172,6 +172,20 @@ function YearlyViewPage() {
                     <TableCell align="right">{euro.format(item.utilities_expenses)}</TableCell>
                   </TableRow>
                 ))}
+                <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                  <TableCell sx={{ fontWeight: 700 }}>Totale</TableCell>
+                  <TableCell align="right">-</TableCell>
+                  <TableCell align="right">-</TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ fontWeight: 700, color: summary.total_balance >= 0 ? 'success.main' : 'error.main' }}
+                  >
+                    {euro.format(summary.total_balance)}
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    {euro.format(summary.total_utilities_expenses)}
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </TableContainer>
