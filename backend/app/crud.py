@@ -151,6 +151,52 @@ def get_monthly_summary(db: Session, year: int, month: int):
         person_contributions=person_contributions
     )
 
+def get_yearly_summary(db: Session, year: int):
+    monthly_points: list[schemas.YearlySummaryPoint] = []
+    total_income = 0.0
+    total_expenses = 0.0
+    total_utilities_expenses = 0.0
+
+    for month in range(1, 13):
+        month_income, _, _ = get_effective_monthly_income(db, year, month)
+        month_expenses = db.query(func.sum(models.Transaction.amount)).filter(
+            extract('year', models.Transaction.date) == year,
+            extract('month', models.Transaction.date) == month
+        ).scalar() or 0.0
+
+        utilities_expenses = db.query(func.sum(models.Transaction.amount)).join(models.Category).filter(
+            extract('year', models.Transaction.date) == year,
+            extract('month', models.Transaction.date) == month,
+            models.Category.name.ilike('%bollette%')
+        ).scalar() or 0.0
+
+        month_balance = float(month_income - month_expenses)
+
+        monthly_points.append(
+            schemas.YearlySummaryPoint(
+                year=year,
+                month=month,
+                label=f"{month:02d}/{year}",
+                total_income=float(month_income),
+                total_expenses=float(month_expenses),
+                balance=month_balance,
+                utilities_expenses=float(utilities_expenses),
+            )
+        )
+
+        total_income += float(month_income)
+        total_expenses += float(month_expenses)
+        total_utilities_expenses += float(utilities_expenses)
+
+    return schemas.YearlySummary(
+        year=year,
+        months=monthly_points,
+        total_income=total_income,
+        total_expenses=total_expenses,
+        total_balance=total_income - total_expenses,
+        total_utilities_expenses=total_utilities_expenses,
+    )
+
 # --- Large Advance CRUD ---
 
 def get_large_advance(db: Session, advance_id: int):

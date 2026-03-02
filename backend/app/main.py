@@ -244,6 +244,12 @@ def get_monthly_summary_endpoint(
     summary = crud.get_monthly_summary(db, year, month)
     return summary
 
+@app.get("/api/summary/yearly/", response_model=schemas.YearlySummary)
+def get_yearly_summary_endpoint(year: int, db: Session = Depends(get_db)):
+    if year < 2000:
+        raise HTTPException(status_code=400, detail="year must be >= 2000")
+    return crud.get_yearly_summary(db, year)
+
 
 @app.get("/api/summary/monthly-income/", response_model=schemas.MonthlyIncomeOverrideConfig)
 def get_monthly_income_config_endpoint(year: int, month: int, db: Session = Depends(get_db)):

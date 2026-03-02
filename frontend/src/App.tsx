@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Box } from '@mui/material';
 import Navigation from './components/Navigation';
 import HomePage from './pages/HomePage';
+import YearlyViewPage from './pages/YearlyViewPage';
 import LargeAdvancesPage from './pages/LargeAdvancesPage';
 import MajorExpensesPage from './pages/MajorExpensesPage';
 import AdminPage from './pages/AdminPage';
@@ -15,6 +16,7 @@ function App() {
         <Box component="main" sx={{ flexGrow: 1 }}>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/vista-anno" element={<YearlyViewPage />} />
             <Route path="/large-advances" element={<LargeAdvancesPage />} />
             <Route path="/major-expenses" element={<MajorExpensesPage />} />
             <Route path="/admin" element={<AdminPage />} />

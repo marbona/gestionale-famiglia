@@ -116,7 +116,8 @@ Commit principale: `684bba0` (`main`, già pushato e deployato).
 - In Home mantenere approccio mese/anno (date puntuali non richieste in UI).
 - Prima di eventuali fix, verificare che la migrazione Alembic `9f3a6c1d4b2e` sia presente/applicata nell'ambiente target.
 - Se il deploy sembra non aggiornarsi, ricordare sempre `rollout restart`.
-- Prima di parlare di build/deploy: fare prima `git push origin main` (la build immagini parte da GitHub Actions sul push; non dipende dalla build frontend locale).
+- Regola ferrea build/deploy: PRIMA `git push origin main`. La build immagini la fa GitHub Actions dopo il push.
+- Non bloccare il flusso per assenza di build frontend locale (`vite` o tool mancanti in locale): in questo progetto la verifica di build ufficiale e' quella CI su GitHub.
 - I secret Kubernetes reali sono locali e fuori git (`k8s/**/secret.yaml` ignorati).
 
 ## Riferimenti rapidi

@@ -150,6 +150,23 @@ class MonthlySummary(BaseModel):
     class Config:
         from_attributes = True
 
+class YearlySummaryPoint(BaseModel):
+    year: int
+    month: int
+    label: str
+    total_income: float
+    total_expenses: float
+    balance: float
+    utilities_expenses: float
+
+class YearlySummary(BaseModel):
+    year: int
+    months: List[YearlySummaryPoint]
+    total_income: float
+    total_expenses: float
+    total_balance: float
+    total_utilities_expenses: float
+
 # --- Statistics Schemas ---
 class TransactionDetail(BaseModel):
     id: int
