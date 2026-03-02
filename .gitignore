@@ -30,3 +30,6 @@ frontend-temp/
 .idea/
 .vscode/
 *.swp
+
+# Local handoff notes (keep only locally)
+GEMINI.md
