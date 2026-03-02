@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import { AppBar, Toolbar, Button, Box } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
 import HomeIcon from '@mui/icons-material/Home';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -10,73 +10,47 @@ import SettingsIcon from '@mui/icons-material/Settings';
 function Navigation() {
   const location = useLocation();
 
+  const navItems = [
+    { to: '/', label: 'Spese\nMensili', icon: <HomeIcon /> },
+    { to: '/vista-anno', label: 'Vista\nAnno', icon: <CalendarMonthIcon /> },
+    { to: '/large-advances', label: 'Grossi\nAnticipi', icon: <AccountBalanceWalletIcon /> },
+    { to: '/major-expenses', label: 'Grosse\nSpese', icon: <TrendingUpIcon /> },
+    { to: '/admin', label: 'Admin', icon: <SettingsIcon /> },
+  ];
+
   return (
     <AppBar position="static">
-      <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 0, mr: 4 }}>
-          Gestionale Famiglia
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            color="inherit"
-            component={Link}
-            to="/"
-            startIcon={<HomeIcon />}
-            variant={location.pathname === '/' ? 'outlined' : 'text'}
-            sx={{
-              borderColor: location.pathname === '/' ? 'white' : 'transparent',
-            }}
-          >
-            Spese Mensili
-          </Button>
-          <Button
-            color="inherit"
-            component={Link}
-            to="/vista-anno"
-            startIcon={<CalendarMonthIcon />}
-            variant={location.pathname === '/vista-anno' ? 'outlined' : 'text'}
-            sx={{
-              borderColor: location.pathname === '/vista-anno' ? 'white' : 'transparent',
-            }}
-          >
-            Vista Anno
-          </Button>
-          <Button
-            color="inherit"
-            component={Link}
-            to="/large-advances"
-            startIcon={<AccountBalanceWalletIcon />}
-            variant={location.pathname === '/large-advances' ? 'outlined' : 'text'}
-            sx={{
-              borderColor: location.pathname === '/large-advances' ? 'white' : 'transparent',
-            }}
-          >
-            Grossi Anticipi
-          </Button>
-          <Button
-            color="inherit"
-            component={Link}
-            to="/major-expenses"
-            startIcon={<TrendingUpIcon />}
-            variant={location.pathname === '/major-expenses' ? 'outlined' : 'text'}
-            sx={{
-              borderColor: location.pathname === '/major-expenses' ? 'white' : 'transparent',
-            }}
-          >
-            Grosse Spese
-          </Button>
-          <Button
-            color="inherit"
-            component={Link}
-            to="/admin"
-            startIcon={<SettingsIcon />}
-            variant={location.pathname === '/admin' ? 'outlined' : 'text'}
-            sx={{
-              borderColor: location.pathname === '/admin' ? 'white' : 'transparent',
-            }}
-          >
-            Admin
-          </Button>
+      <Toolbar sx={{ px: { xs: 0.5, sm: 1 }, py: 0.5, minHeight: 'auto !important' }}>
+        <Box sx={{ display: 'flex', gap: 0.5, width: '100%' }}>
+          {navItems.map((item) => (
+            <Button
+              key={item.to}
+              color="inherit"
+              component={Link}
+              to={item.to}
+              startIcon={item.icon}
+              variant={location.pathname === item.to ? 'outlined' : 'text'}
+              sx={{
+                borderColor: location.pathname === item.to ? 'white' : 'transparent',
+                minWidth: 0,
+                flex: 1,
+                px: { xs: 0.5, sm: 1 },
+                py: { xs: 0.4, sm: 0.7 },
+                fontSize: { xs: '0.68rem', sm: '0.8rem' },
+                lineHeight: 1.05,
+                textAlign: 'center',
+                '& .MuiButton-startIcon': {
+                  display: { xs: 'none', sm: 'inline-flex' },
+                  mr: { xs: 0.3, sm: 0.6 },
+                  ml: 0,
+                },
+              }}
+            >
+              <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
+                {item.label}
+              </Box>
+            </Button>
+          ))}
         </Box>
       </Toolbar>
     </AppBar>
