@@ -100,6 +100,17 @@ function YearlyViewPage() {
     }));
   }, [summary]);
 
+  const yearlyAverages = useMemo(() => {
+    if (!summary || summary.months.length === 0) {
+      return { balance: 0, utilities: 0 };
+    }
+    const monthsCount = summary.months.length;
+    return {
+      balance: summary.total_balance / monthsCount,
+      utilities: summary.total_utilities_expenses / monthsCount,
+    };
+  }, [summary]);
+
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
@@ -184,6 +195,20 @@ function YearlyViewPage() {
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>
                     {euro.format(summary.total_utilities_expenses)}
+                  </TableCell>
+                </TableRow>
+                <TableRow sx={{ backgroundColor: 'action.selected' }}>
+                  <TableCell sx={{ fontWeight: 700 }}>Media annuale</TableCell>
+                  <TableCell align="right">-</TableCell>
+                  <TableCell align="right">-</TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ fontWeight: 700, color: yearlyAverages.balance >= 0 ? 'success.main' : 'error.main' }}
+                  >
+                    {euro.format(yearlyAverages.balance)}
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    {euro.format(yearlyAverages.utilities)}
                   </TableCell>
                 </TableRow>
               </TableBody>
