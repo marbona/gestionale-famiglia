@@ -102,12 +102,18 @@ function YearlyViewPage() {
 
   const yearlyAverages = useMemo(() => {
     if (!summary || summary.months.length === 0) {
-      return { balance: 0, utilities: 0 };
+      return { balance: null as number | null, utilities: null as number | null };
     }
-    const monthsCount = summary.months.length;
+
+    const balanceMonths = summary.months.filter((item) => item.balance < 1000);
+    const utilitiesMonths = summary.months.filter((item) => item.utilities_expenses > 0);
+
+    const balanceTotal = balanceMonths.reduce((acc, item) => acc + item.balance, 0);
+    const utilitiesTotal = utilitiesMonths.reduce((acc, item) => acc + item.utilities_expenses, 0);
+
     return {
-      balance: summary.total_balance / monthsCount,
-      utilities: summary.total_utilities_expenses / monthsCount,
+      balance: balanceMonths.length > 0 ? balanceTotal / balanceMonths.length : null,
+      utilities: utilitiesMonths.length > 0 ? utilitiesTotal / utilitiesMonths.length : null,
     };
   }, [summary]);
 
@@ -203,12 +209,19 @@ function YearlyViewPage() {
                   <TableCell align="right">-</TableCell>
                   <TableCell
                     align="right"
-                    sx={{ fontWeight: 700, color: yearlyAverages.balance >= 0 ? 'success.main' : 'error.main' }}
+                    sx={{
+                      fontWeight: 700,
+                      color: yearlyAverages.balance === null
+                        ? 'text.primary'
+                        : yearlyAverages.balance >= 0
+                          ? 'success.main'
+                          : 'error.main',
+                    }}
                   >
-                    {euro.format(yearlyAverages.balance)}
+                    {yearlyAverages.balance === null ? '-' : euro.format(yearlyAverages.balance)}
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {euro.format(yearlyAverages.utilities)}
+                    {yearlyAverages.utilities === null ? '-' : euro.format(yearlyAverages.utilities)}
                   </TableCell>
                 </TableRow>
               </TableBody>
