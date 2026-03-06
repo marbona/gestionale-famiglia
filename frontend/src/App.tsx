@@ -7,6 +7,7 @@ import YearlyViewPage from './pages/YearlyViewPage';
 import LargeAdvancesPage from './pages/LargeAdvancesPage';
 import MajorExpensesPage from './pages/MajorExpensesPage';
 import AdminPage from './pages/AdminPage';
+import AIChatPage from './pages/AIChatPage';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <Route path="/vista-anno" element={<YearlyViewPage />} />
             <Route path="/large-advances" element={<LargeAdvancesPage />} />
             <Route path="/major-expenses" element={<MajorExpensesPage />} />
+            <Route path="/ai-chat" element={<AIChatPage />} />
             <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </Box>

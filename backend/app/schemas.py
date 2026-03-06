@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import date, datetime
 from typing import List, Optional, Dict
+from typing import Literal
 
 # --- Person Schemas ---
 class PersonBase(BaseModel):
@@ -287,3 +288,43 @@ class BackupPayload(BaseModel):
     transactions: List[BackupTransactionItem]
     large_advances: List[BackupLargeAdvanceItem]
     major_expenses: List[BackupMajorExpenseItem]
+
+
+class AIChatHealth(BaseModel):
+    enabled: bool
+    reachable: bool
+    model: str
+    model_available: bool
+    detail: Optional[str] = None
+
+
+class AIChatSessionCreateResponse(BaseModel):
+    session_id: str
+
+
+class AIChatMessageRequest(BaseModel):
+    session_id: Optional[str] = None
+    message: str
+
+
+class AIChartPoint(BaseModel):
+    label: str
+    value: float
+
+
+class AIChartSpec(BaseModel):
+    type: Literal["line", "bar", "pie"]
+    title: str
+    data: List[AIChartPoint]
+
+
+class AIChatToolCall(BaseModel):
+    tool_name: str
+    arguments: Dict[str, float | int | str]
+
+
+class AIChatMessageResponse(BaseModel):
+    session_id: str
+    answer: str
+    charts: List[AIChartSpec] = []
+    used_tools: List[AIChatToolCall] = []

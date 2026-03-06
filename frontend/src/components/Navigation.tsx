@@ -6,6 +6,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SettingsIcon from '@mui/icons-material/Settings';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 
 function Navigation() {
   const location = useLocation();
@@ -15,6 +16,7 @@ function Navigation() {
     { to: '/vista-anno', label: 'Vista\nAnno', icon: <CalendarMonthIcon /> },
     { to: '/large-advances', label: 'Grossi\nAnticipi', icon: <AccountBalanceWalletIcon /> },
     { to: '/major-expenses', label: 'Grosse\nSpese', icon: <TrendingUpIcon /> },
+    { to: '/ai-chat', label: 'AI\nChat', icon: <SmartToyIcon /> },
     { to: '/admin', label: 'Admin', icon: <SettingsIcon /> },
   ];
 

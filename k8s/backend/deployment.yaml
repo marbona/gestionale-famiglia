@@ -31,6 +31,18 @@ spec:
                 secretKeyRef:
                   name: backend-secret
                   key: DATABASE_URL
+            - name: AI_CHAT_ENABLED
+              value: "true"
+            - name: OLLAMA_BASE_URL
+              value: "http://192.168.69.51:11434"
+            - name: OLLAMA_MODEL
+              value: "qwen2.5:7b"
+            - name: AI_CHAT_MAX_TURNS
+              value: "20"
+            - name: AI_CHAT_TIMEOUT_SECONDS
+              value: "45"
+            - name: AI_CHAT_SESSION_TTL_MINUTES
+              value: "120"
           readinessProbe:
             httpGet:
               path: /

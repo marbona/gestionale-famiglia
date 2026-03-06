@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from . import crud, models, schemas
 from .database import SessionLocal, engine
 from . import email_service
+from .ai_chat import service as ai_chat_service
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -258,6 +259,31 @@ def get_monthly_income_config_endpoint(year: int, month: int, db: Session = Depe
     if year < 2000:
         raise HTTPException(status_code=400, detail="year must be >= 2000")
     return crud.get_monthly_income_config(db, year, month)
+
+
+@app.get("/api/ai-chat/health", response_model=schemas.AIChatHealth)
+def ai_chat_health_endpoint():
+    return ai_chat_service.health()
+
+
+@app.post("/api/ai-chat/session", response_model=schemas.AIChatSessionCreateResponse)
+def ai_chat_create_session_endpoint():
+    return schemas.AIChatSessionCreateResponse(session_id=ai_chat_service.create_session())
+
+
+@app.post("/api/ai-chat/message", response_model=schemas.AIChatMessageResponse)
+def ai_chat_message_endpoint(payload: schemas.AIChatMessageRequest, db: Session = Depends(get_db)):
+    if not ai_chat_service.enabled:
+        raise HTTPException(status_code=503, detail="AI chat is disabled")
+    try:
+        result = ai_chat_service.process_message(db=db, session_id=payload.session_id, user_message=payload.message)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"AI chat error: {exc}")
+    return result
 
 
 @app.put("/api/summary/monthly-income/", response_model=schemas.MonthlyIncomeOverrideConfig)
