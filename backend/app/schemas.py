@@ -328,3 +328,4 @@ class AIChatMessageResponse(BaseModel):
     answer: str
     charts: List[AIChartSpec] = []
     used_tools: List[AIChatToolCall] = []
+    suggested_questions: List[str] = []

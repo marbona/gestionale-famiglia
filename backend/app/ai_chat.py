@@ -383,6 +383,81 @@ class AIChatService:
 
         return []
 
+    def _build_suggested_questions(self, used_tools: list[dict[str, Any]], user_message: str) -> list[str]:
+        if not used_tools:
+            return [
+                "Vuoi che analizziamo il mese corrente per categoria e bilancio?",
+                "Preferisci un confronto tra questo mese e il precedente?",
+                "Ti preparo una vista annuale con i mesi migliori e peggiori?",
+            ]
+
+        last = used_tools[-1]
+        tool_name = last.get("tool_name")
+        args = last.get("arguments", {})
+
+        if tool_name == "monthly_summary":
+            year = args.get("year")
+            month = args.get("month")
+            if isinstance(year, int) and isinstance(month, int):
+                prev_month = 12 if month == 1 else month - 1
+                prev_year = year - 1 if month == 1 else year
+                return [
+                    f"Vuoi confrontare {month:02d}/{year} con {prev_month:02d}/{prev_year}?",
+                    f"Vuoi vedere le categorie che pesano di più in {month:02d}/{year}?",
+                    f"Vuoi anche il trend annuale del bilancio {year}?",
+                ]
+
+        if tool_name == "month_compare":
+            return [
+                "Vuoi che analizziamo quali categorie spiegano la differenza tra i due mesi?",
+                "Vuoi estendere il confronto agli ultimi 6 mesi?",
+                "Preferisci un piano pratico di riduzione spese per il prossimo mese?",
+            ]
+
+        if tool_name == "category_breakdown":
+            return [
+                "Vuoi confrontare queste categorie con il mese precedente?",
+                "Vuoi una soglia obiettivo per ciascuna categoria il mese prossimo?",
+                "Vuoi vedere anche l'impatto sul bilancio totale del mese?",
+            ]
+
+        if tool_name == "yearly_summary":
+            year = args.get("year")
+            if isinstance(year, int):
+                return [
+                    f"Vuoi identificare i 3 mesi peggiori del {year} e come migliorarli?",
+                    f"Vuoi isolare l'andamento bollette nel {year}?",
+                    "Vuoi un confronto con l'anno precedente?",
+                ]
+
+        if tool_name == "large_advances_balance":
+            return [
+                "Vuoi una simulazione di riequilibrio tra Marco e Anna?",
+                "Vuoi vedere come cambierebbe il saldo con un versamento extra?",
+                "Vuoi un riepilogo mensile degli anticipi più rilevanti?",
+            ]
+
+        if tool_name == "major_expenses_by_year":
+            return [
+                "Vuoi confrontare le grosse spese con l'anno precedente?",
+                "Vuoi individuare le categorie straordinarie più ricorrenti?",
+                "Vuoi una proposta di budget annuale per le grosse spese?",
+            ]
+
+        user_message_lower = user_message.lower()
+        if "marzo" in user_message_lower:
+            return [
+                "Vuoi confrontare marzo con febbraio?",
+                "Vuoi confrontare marzo con la media degli ultimi mesi?",
+                "Vuoi vedere il dettaglio categorie di marzo?",
+            ]
+
+        return [
+            "Vuoi un confronto col mese precedente?",
+            "Vuoi il dettaglio per categoria?",
+            "Vuoi un suggerimento operativo per il prossimo mese?",
+        ]
+
     def process_message(self, db: Session, session_id: str | None, user_message: str) -> dict[str, Any]:
         if not self.enabled:
             raise RuntimeError("AI chat is disabled")
@@ -463,6 +538,7 @@ class AIChatService:
             "answer": assistant_text,
             "charts": self._build_chart_specs(used_tools),
             "used_tools": [{"tool_name": item["tool_name"], "arguments": item["arguments"]} for item in used_tools],
+            "suggested_questions": self._build_suggested_questions(used_tools, user_message),
         }
 
 

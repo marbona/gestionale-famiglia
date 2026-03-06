@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Container,
   Paper,
@@ -42,6 +43,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   charts?: AIChartSpec[];
+  suggestedQuestions?: string[];
 }
 
 interface HealthResponse {
@@ -120,6 +122,7 @@ function AIChatPage() {
         role: 'assistant',
         content: response.data.answer,
         charts: response.data.charts,
+        suggestedQuestions: response.data.suggested_questions ?? [],
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err: any) {
@@ -174,12 +177,35 @@ function AIChatPage() {
               <Paper
                 sx={{
                   p: 1.5,
-                  backgroundColor: message.role === 'user' ? 'primary.light' : 'grey.100',
+                  backgroundColor: message.role === 'user' ? 'primary.main' : 'background.paper',
                   color: message.role === 'user' ? 'primary.contrastText' : 'text.primary',
+                  border: '1px solid',
+                  borderColor: message.role === 'user' ? 'primary.dark' : 'divider',
                 }}
               >
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{message.content}</Typography>
               </Paper>
+
+              {message.role === 'assistant' && message.suggestedQuestions && message.suggestedQuestions.length > 0 && (
+                <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap', gap: 1 }}>
+                  {message.suggestedQuestions.map((question, questionIdx) => (
+                    <Chip
+                      key={`${index}-q-${questionIdx}`}
+                      label={question}
+                      variant="outlined"
+                      onClick={() => setInput(question)}
+                      sx={{
+                        maxWidth: '100%',
+                        '& .MuiChip-label': {
+                          whiteSpace: 'normal',
+                          textOverflow: 'clip',
+                          display: 'block',
+                        },
+                      }}
+                    />
+                  ))}
+                </Stack>
+              )}
 
               {message.role === 'assistant' && message.charts && message.charts.length > 0 && (
                 <Stack spacing={2} sx={{ mt: 1 }}>
