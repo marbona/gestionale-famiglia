@@ -39,11 +39,21 @@ interface AIChartSpec {
   data: AIChartPoint[];
 }
 
+interface AIToolCall {
+  tool_name: string;
+  arguments: Record<string, number | string>;
+}
+
+interface AISuggestedAction {
+  label: string;
+  tool_call?: AIToolCall;
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   charts?: AIChartSpec[];
-  suggestedQuestions?: string[];
+  suggestedActions?: AISuggestedAction[];
 }
 
 interface HealthResponse {
@@ -102,14 +112,17 @@ function AIChatPage() {
     return id;
   };
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
+  const handleSend = async (customMessage?: string, followUpTool?: AIToolCall) => {
+    const candidate = customMessage ?? input;
+    const trimmed = candidate.trim();
     if (!trimmed || loading) return;
 
     setError(null);
     const newUserMessage: ChatMessage = { role: 'user', content: trimmed };
     setMessages((prev) => [...prev, newUserMessage]);
-    setInput('');
+    if (!customMessage) {
+      setInput('');
+    }
     setLoading(true);
 
     try {
@@ -117,12 +130,13 @@ function AIChatPage() {
       const response = await axios.post('/api/ai-chat/message', {
         session_id: sid,
         message: trimmed,
+        follow_up_tool: followUpTool ?? null,
       });
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         content: response.data.answer,
         charts: response.data.charts,
-        suggestedQuestions: response.data.suggested_questions ?? [],
+        suggestedActions: response.data.suggested_actions ?? [],
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err: any) {
@@ -130,6 +144,9 @@ function AIChatPage() {
       const detail = err?.response?.data?.detail;
       setError(typeof detail === 'string' ? detail : 'Errore durante la richiesta AI.');
     } finally {
+      if (customMessage) {
+        setInput('');
+      }
       setLoading(false);
     }
   };
@@ -186,14 +203,14 @@ function AIChatPage() {
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{message.content}</Typography>
               </Paper>
 
-              {message.role === 'assistant' && message.suggestedQuestions && message.suggestedQuestions.length > 0 && (
+              {message.role === 'assistant' && message.suggestedActions && message.suggestedActions.length > 0 && (
                 <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap', gap: 1 }}>
-                  {message.suggestedQuestions.map((question, questionIdx) => (
+                  {message.suggestedActions.map((action, questionIdx) => (
                     <Chip
                       key={`${index}-q-${questionIdx}`}
-                      label={question}
+                      label={action.label}
                       variant="outlined"
-                      onClick={() => setInput(question)}
+                      onClick={() => handleSend(action.label, action.tool_call)}
                       sx={{
                         maxWidth: '100%',
                         '& .MuiChip-label': {

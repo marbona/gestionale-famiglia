@@ -305,6 +305,7 @@ class AIChatSessionCreateResponse(BaseModel):
 class AIChatMessageRequest(BaseModel):
     session_id: Optional[str] = None
     message: str
+    follow_up_tool: Optional['AIChatToolCall'] = None
 
 
 class AIChartPoint(BaseModel):
@@ -323,9 +324,15 @@ class AIChatToolCall(BaseModel):
     arguments: Dict[str, float | int | str]
 
 
+class AIChatSuggestedAction(BaseModel):
+    label: str
+    tool_call: Optional[AIChatToolCall] = None
+
+
 class AIChatMessageResponse(BaseModel):
     session_id: str
     answer: str
     charts: List[AIChartSpec] = []
     used_tools: List[AIChatToolCall] = []
     suggested_questions: List[str] = []
+    suggested_actions: List[AIChatSuggestedAction] = []

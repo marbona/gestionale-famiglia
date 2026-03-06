@@ -276,7 +276,13 @@ def ai_chat_message_endpoint(payload: schemas.AIChatMessageRequest, db: Session 
     if not ai_chat_service.enabled:
         raise HTTPException(status_code=503, detail="AI chat is disabled")
     try:
-        result = ai_chat_service.process_message(db=db, session_id=payload.session_id, user_message=payload.message)
+        forced_tool = payload.follow_up_tool.model_dump() if payload.follow_up_tool else None
+        result = ai_chat_service.process_message(
+            db=db,
+            session_id=payload.session_id,
+            user_message=payload.message,
+            forced_tool_call=forced_tool,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except RuntimeError as exc:

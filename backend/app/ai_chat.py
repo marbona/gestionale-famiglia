@@ -383,12 +383,12 @@ class AIChatService:
 
         return []
 
-    def _build_suggested_questions(self, used_tools: list[dict[str, Any]], user_message: str) -> list[str]:
+    def _build_suggested_actions(self, used_tools: list[dict[str, Any]], user_message: str) -> list[dict[str, Any]]:
         if not used_tools:
             return [
-                "Vuoi che analizziamo il mese corrente per categoria e bilancio?",
-                "Preferisci un confronto tra questo mese e il precedente?",
-                "Ti preparo una vista annuale con i mesi migliori e peggiori?",
+                {"label": "Vuoi che analizziamo il mese corrente per categoria e bilancio?"},
+                {"label": "Preferisci un confronto tra questo mese e il precedente?"},
+                {"label": "Ti preparo una vista annuale con i mesi migliori e peggiori?"},
             ]
 
         last = used_tools[-1]
@@ -402,63 +402,129 @@ class AIChatService:
                 prev_month = 12 if month == 1 else month - 1
                 prev_year = year - 1 if month == 1 else year
                 return [
-                    f"Vuoi confrontare {month:02d}/{year} con {prev_month:02d}/{prev_year}?",
-                    f"Vuoi vedere le categorie che pesano di più in {month:02d}/{year}?",
-                    f"Vuoi anche il trend annuale del bilancio {year}?",
+                    {
+                        "label": f"Vuoi confrontare {month:02d}/{year} con {prev_month:02d}/{prev_year}?",
+                        "tool_call": {
+                            "tool_name": "month_compare",
+                            "arguments": {
+                                "year_a": prev_year,
+                                "month_a": prev_month,
+                                "year_b": year,
+                                "month_b": month,
+                            },
+                        },
+                    },
+                    {
+                        "label": f"Vuoi vedere le categorie che pesano di più in {month:02d}/{year}?",
+                        "tool_call": {
+                            "tool_name": "category_breakdown",
+                            "arguments": {"year": year, "month": month},
+                        },
+                    },
+                    {
+                        "label": f"Vuoi anche il trend annuale del bilancio {year}?",
+                        "tool_call": {
+                            "tool_name": "yearly_summary",
+                            "arguments": {"year": year},
+                        },
+                    },
                 ]
 
         if tool_name == "month_compare":
-            return [
-                "Vuoi che analizziamo quali categorie spiegano la differenza tra i due mesi?",
-                "Vuoi estendere il confronto agli ultimi 6 mesi?",
-                "Preferisci un piano pratico di riduzione spese per il prossimo mese?",
+            year_b = args.get("year_b")
+            month_b = args.get("month_b")
+            actions = [
+                {"label": "Vuoi che analizziamo quali categorie spiegano la differenza tra i due mesi?"},
+                {"label": "Vuoi estendere il confronto agli ultimi 6 mesi?"},
+                {"label": "Preferisci un piano pratico di riduzione spese per il prossimo mese?"},
             ]
+            if isinstance(year_b, int) and isinstance(month_b, int):
+                actions[0]["tool_call"] = {
+                    "tool_name": "category_breakdown",
+                    "arguments": {"year": year_b, "month": month_b},
+                }
+                actions[1]["tool_call"] = {
+                    "tool_name": "yearly_summary",
+                    "arguments": {"year": year_b},
+                }
+            return actions
 
         if tool_name == "category_breakdown":
-            return [
-                "Vuoi confrontare queste categorie con il mese precedente?",
-                "Vuoi una soglia obiettivo per ciascuna categoria il mese prossimo?",
-                "Vuoi vedere anche l'impatto sul bilancio totale del mese?",
+            year = args.get("year")
+            month = args.get("month")
+            actions = [
+                {"label": "Vuoi confrontare queste categorie con il mese precedente?"},
+                {"label": "Vuoi una soglia obiettivo per ciascuna categoria il mese prossimo?"},
+                {"label": "Vuoi vedere anche l'impatto sul bilancio totale del mese?"},
             ]
+            if isinstance(year, int) and isinstance(month, int):
+                prev_month = 12 if month == 1 else month - 1
+                prev_year = year - 1 if month == 1 else year
+                actions[0]["tool_call"] = {
+                    "tool_name": "month_compare",
+                    "arguments": {
+                        "year_a": prev_year,
+                        "month_a": prev_month,
+                        "year_b": year,
+                        "month_b": month,
+                    },
+                }
+                actions[2]["tool_call"] = {
+                    "tool_name": "monthly_summary",
+                    "arguments": {"year": year, "month": month},
+                }
+            return actions
 
         if tool_name == "yearly_summary":
             year = args.get("year")
             if isinstance(year, int):
                 return [
-                    f"Vuoi identificare i 3 mesi peggiori del {year} e come migliorarli?",
-                    f"Vuoi isolare l'andamento bollette nel {year}?",
-                    "Vuoi un confronto con l'anno precedente?",
+                    {"label": f"Vuoi identificare i 3 mesi peggiori del {year} e come migliorarli?"},
+                    {"label": f"Vuoi isolare l'andamento bollette nel {year}?"},
+                    {
+                        "label": "Vuoi un confronto con l'anno precedente?",
+                        "tool_call": {
+                            "tool_name": "yearly_summary",
+                            "arguments": {"year": year - 1},
+                        },
+                    },
                 ]
 
         if tool_name == "large_advances_balance":
             return [
-                "Vuoi una simulazione di riequilibrio tra Marco e Anna?",
-                "Vuoi vedere come cambierebbe il saldo con un versamento extra?",
-                "Vuoi un riepilogo mensile degli anticipi più rilevanti?",
+                {"label": "Vuoi una simulazione di riequilibrio tra Marco e Anna?"},
+                {"label": "Vuoi vedere come cambierebbe il saldo con un versamento extra?"},
+                {"label": "Vuoi un riepilogo mensile degli anticipi più rilevanti?"},
             ]
 
         if tool_name == "major_expenses_by_year":
             return [
-                "Vuoi confrontare le grosse spese con l'anno precedente?",
-                "Vuoi individuare le categorie straordinarie più ricorrenti?",
-                "Vuoi una proposta di budget annuale per le grosse spese?",
+                {"label": "Vuoi confrontare le grosse spese con l'anno precedente?"},
+                {"label": "Vuoi individuare le categorie straordinarie più ricorrenti?"},
+                {"label": "Vuoi una proposta di budget annuale per le grosse spese?"},
             ]
 
         user_message_lower = user_message.lower()
         if "marzo" in user_message_lower:
             return [
-                "Vuoi confrontare marzo con febbraio?",
-                "Vuoi confrontare marzo con la media degli ultimi mesi?",
-                "Vuoi vedere il dettaglio categorie di marzo?",
+                {"label": "Vuoi confrontare marzo con febbraio?"},
+                {"label": "Vuoi confrontare marzo con la media degli ultimi mesi?"},
+                {"label": "Vuoi vedere il dettaglio categorie di marzo?"},
             ]
 
         return [
-            "Vuoi un confronto col mese precedente?",
-            "Vuoi il dettaglio per categoria?",
-            "Vuoi un suggerimento operativo per il prossimo mese?",
+            {"label": "Vuoi un confronto col mese precedente?"},
+            {"label": "Vuoi il dettaglio per categoria?"},
+            {"label": "Vuoi un suggerimento operativo per il prossimo mese?"},
         ]
 
-    def process_message(self, db: Session, session_id: str | None, user_message: str) -> dict[str, Any]:
+    def process_message(
+        self,
+        db: Session,
+        session_id: str | None,
+        user_message: str,
+        forced_tool_call: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if not self.enabled:
             raise RuntimeError("AI chat is disabled")
 
@@ -470,35 +536,18 @@ class AIChatService:
 
         history = list(session.messages)
 
-        planner_messages: list[dict[str, str]] = [{"role": "system", "content": self._build_planner_prompt()}]
-        planner_messages.extend(history)
-        planner_messages.append({"role": "user", "content": user_message})
-
         used_tools: list[dict[str, Any]] = []
         direct_answer: str | None = None
 
-        for _ in range(2):
-            planner_raw = self._call_ollama(planner_messages, force_json=True)
-            planner_json = self._extract_json_object(planner_raw) or {}
-            action = planner_json.get("action")
-
-            if action == "answer":
-                direct_answer = str(planner_json.get("answer", "")).strip()
-                break
-
-            if action != "tool_call":
-                break
-
-            tool_name = str(planner_json.get("tool_name", "")).strip()
-            arguments = planner_json.get("arguments", {})
+        if forced_tool_call:
+            tool_name = str(forced_tool_call.get("tool_name", "")).strip()
+            arguments = forced_tool_call.get("arguments", {}) or {}
             if not isinstance(arguments, dict):
                 arguments = {}
-
             try:
                 tool_result = self._execute_tool(db, tool_name, arguments)
             except Exception as exc:
                 tool_result = {"error": str(exc)}
-
             used_tools.append(
                 {
                     "tool_name": tool_name,
@@ -507,17 +556,52 @@ class AIChatService:
                 }
             )
 
-            planner_messages.append({"role": "assistant", "content": json.dumps(planner_json, ensure_ascii=False)})
-            planner_messages.append(
-                {
-                    "role": "user",
-                    "content": (
-                        "Risultato tool eseguito (JSON): "
-                        + json.dumps({"tool_name": tool_name, "result": tool_result}, ensure_ascii=False)
-                        + "\nSe hai abbastanza dati, ora rispondi con action=answer."
-                    ),
-                }
-            )
+        else:
+            planner_messages: list[dict[str, str]] = [{"role": "system", "content": self._build_planner_prompt()}]
+            planner_messages.extend(history)
+            planner_messages.append({"role": "user", "content": user_message})
+
+            for _ in range(2):
+                planner_raw = self._call_ollama(planner_messages, force_json=True)
+                planner_json = self._extract_json_object(planner_raw) or {}
+                action = planner_json.get("action")
+
+                if action == "answer":
+                    direct_answer = str(planner_json.get("answer", "")).strip()
+                    break
+
+                if action != "tool_call":
+                    break
+
+                tool_name = str(planner_json.get("tool_name", "")).strip()
+                arguments = planner_json.get("arguments", {})
+                if not isinstance(arguments, dict):
+                    arguments = {}
+
+                try:
+                    tool_result = self._execute_tool(db, tool_name, arguments)
+                except Exception as exc:
+                    tool_result = {"error": str(exc)}
+
+                used_tools.append(
+                    {
+                        "tool_name": tool_name,
+                        "arguments": arguments,
+                        "result": tool_result,
+                    }
+                )
+
+                planner_messages.append({"role": "assistant", "content": json.dumps(planner_json, ensure_ascii=False)})
+                planner_messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Risultato tool eseguito (JSON): "
+                            + json.dumps({"tool_name": tool_name, "result": tool_result}, ensure_ascii=False)
+                            + "\nSe hai abbastanza dati, ora rispondi con action=answer."
+                        ),
+                    }
+                )
 
         if direct_answer:
             assistant_text = direct_answer
@@ -533,12 +617,14 @@ class AIChatService:
         self._append_session_message(resolved_session_id, "user", user_message)
         self._append_session_message(resolved_session_id, "assistant", assistant_text)
 
+        suggested_actions = self._build_suggested_actions(used_tools, user_message)
         return {
             "session_id": resolved_session_id,
             "answer": assistant_text,
             "charts": self._build_chart_specs(used_tools),
             "used_tools": [{"tool_name": item["tool_name"], "arguments": item["arguments"]} for item in used_tools],
-            "suggested_questions": self._build_suggested_questions(used_tools, user_message),
+            "suggested_questions": [item.get("label", "") for item in suggested_actions if item.get("label")],
+            "suggested_actions": suggested_actions,
         }
 
 
