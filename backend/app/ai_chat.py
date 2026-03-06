@@ -40,7 +40,7 @@ class AIChatService:
 
     @property
     def timeout_seconds(self) -> int:
-        return int(os.getenv("AI_CHAT_TIMEOUT_SECONDS", "45"))
+        return int(os.getenv("AI_CHAT_TIMEOUT_SECONDS", "90"))
 
     @property
     def max_turns(self) -> int:
@@ -95,6 +95,7 @@ class AIChatService:
             "messages": messages,
             "options": {
                 "temperature": 0.25,
+                "num_predict": 260,
             },
         }
         if force_json:
@@ -183,7 +184,38 @@ class AIChatService:
     def _build_tool_functions(self, db: Session) -> dict[str, Callable[..., dict[str, Any]]]:
         def monthly_summary(year: int, month: int) -> dict[str, Any]:
             summary = crud.get_monthly_summary(db, year=year, month=month)
-            return summary.model_dump()
+            payload = summary.model_dump()
+            # In Home, paid amounts are used for internal monthly equalization only.
+            contributions = payload.get("person_contributions", {})
+            marco_paid = float(contributions.get("MARCO", {}).get("paid", 0.0))
+            anna_paid = float(contributions.get("ANNA", {}).get("paid", 0.0))
+            delta = round(marco_paid - anna_paid, 2)
+            payload["person_contributions"] = {
+                "MARCO": {"paid": marco_paid},
+                "ANNA": {"paid": anna_paid},
+            }
+            if delta > 0:
+                payload["equalization_hint"] = {
+                    "delta_marco_minus_anna": delta,
+                    "message": (
+                        f"Marco ha anticipato {delta:.2f} EUR rispetto ad Anna nel mese. "
+                        f"Nel mese successivo Marco puo' pagare circa {delta:.2f} EUR in meno per riequilibrare."
+                    ),
+                }
+            elif delta < 0:
+                payload["equalization_hint"] = {
+                    "delta_marco_minus_anna": delta,
+                    "message": (
+                        f"Anna ha anticipato {abs(delta):.2f} EUR rispetto a Marco nel mese. "
+                        f"Nel mese successivo Anna puo' pagare circa {abs(delta):.2f} EUR in meno per riequilibrare."
+                    ),
+                }
+            else:
+                payload["equalization_hint"] = {
+                    "delta_marco_minus_anna": 0.0,
+                    "message": "Nel mese i pagamenti Marco/Anna risultano gia' bilanciati.",
+                }
+            return payload
 
         def yearly_summary(year: int) -> dict[str, Any]:
             summary = crud.get_yearly_summary(db, year=year)
@@ -304,6 +336,11 @@ class AIChatService:
             f"Data attuale: {now_iso}. "
             "Rispondi in italiano, in modo pratico e chiaro. "
             "Dai consigli concreti e motivati, ma evita toni assoluti. "
+            "Regole dominio Gestionale Famiglia: "
+            "nelle Spese Mensili i campi person_contributions indicano chi ha pagato nel mese per il riequilibrio interno, "
+            "NON debiti reali verso il sistema; evita frasi come 'X deve contribuire'. "
+            "Se MARCO ha pagato piu' di ANNA nel mese, suggerisci che MARCO puo' pagare di meno nel mese successivo "
+            "(o ANNA di piu') per compensare la differenza. "
             "Usa SOLO i dati tool forniti quando citi numeri.\n"
             f"TOOL_RESULTS={tool_payload}"
         )
@@ -610,7 +647,11 @@ class AIChatService:
             answer_messages: list[dict[str, str]] = [
                 {"role": "system", "content": self._build_answer_prompt(now_iso, used_tools)},
             ]
-            answer_messages.extend(history)
+            # Keep forced follow-ups fast and robust by avoiding full-history prompt growth.
+            if forced_tool_call:
+                answer_messages.extend(history[-2:])
+            else:
+                answer_messages.extend(history[-8:])
             answer_messages.append({"role": "user", "content": user_message})
             assistant_text = self._call_ollama(answer_messages, force_json=False).strip()
 

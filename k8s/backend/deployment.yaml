@@ -40,7 +40,7 @@ spec:
             - name: AI_CHAT_MAX_TURNS
               value: "20"
             - name: AI_CHAT_TIMEOUT_SECONDS
-              value: "45"
+              value: "90"
             - name: AI_CHAT_SESSION_TTL_MINUTES
               value: "120"
           readinessProbe:
