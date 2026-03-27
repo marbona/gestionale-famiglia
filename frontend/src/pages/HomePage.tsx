@@ -79,13 +79,26 @@ const getPreviousMonthYear = () => {
   };
 };
 
+const getDefaultHomeMonthYear = () => {
+  const now = new Date();
+  const defaultMonthDate = now.getDate() >= 27
+    ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    : new Date(now.getFullYear(), now.getMonth(), 1);
+
+  return {
+    year: defaultMonthDate.getFullYear(),
+    month: defaultMonthDate.getMonth() + 1,
+  };
+};
+
 function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  const currentInitialMonth = new Date().getMonth() + 1;
-  const currentInitialYear = new Date().getFullYear();
+  const defaultHomeMonth = getDefaultHomeMonthYear();
+  const currentInitialMonth = defaultHomeMonth.month;
+  const currentInitialYear = defaultHomeMonth.year;
   const [selectedYear, setSelectedYear] = useState<number>(currentInitialYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentInitialMonth);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
