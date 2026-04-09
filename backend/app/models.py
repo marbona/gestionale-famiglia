@@ -55,6 +55,17 @@ class MonthlyIncomeOverride(Base):
     month = Column(Integer, nullable=False, index=True)
     total_income = Column(Float, nullable=False)
 
+
+class MonthlyAccountBalance(Base):
+    """Model for storing the actual bank account balance at the start of each month"""
+    __tablename__ = "monthly_account_balances"
+    __table_args__ = (UniqueConstraint("year", "month", name="uq_monthly_account_balances_year_month"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    month = Column(Integer, nullable=False, index=True)
+    account_balance = Column(Float, nullable=True)  # Null means not set
+
 class Category(Base):
     __tablename__ = "categories"
 

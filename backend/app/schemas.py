@@ -147,6 +147,8 @@ class MonthlySummary(BaseModel):
     balance: float
     expenses_by_category: Dict[str, float]
     person_contributions: Dict[str, Dict[str, float]]  # {person_name: {paid: X, needs_to_pay: Y}}
+    account_balance: Optional[float] = None  # Saldo conto corrente (manuale)
+    account_remaining: Optional[float] = None  # Residuo conto corrente (calcolato)
 
     class Config:
         from_attributes = True
@@ -255,6 +257,18 @@ class MonthlyIncomeOverrideConfig(BaseModel):
     calculated_income: float
     total_income: float
     is_overridden: bool
+
+
+class MonthlyAccountBalanceUpsert(BaseModel):
+    account_balance: Optional[float] = None
+
+
+class MonthlyAccountBalanceConfig(BaseModel):
+    year: int
+    month: int
+    account_balance: Optional[float] = None
+    is_set: bool
+    account_remaining: Optional[float] = None  # Computed: account_balance - total_expenses
 
 
 class BackupTransactionItem(BaseModel):

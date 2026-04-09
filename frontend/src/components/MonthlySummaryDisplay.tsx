@@ -25,6 +25,8 @@ interface MonthlySummary {
     balance: number;
     expenses_by_category: CategoryExpenses;
     person_contributions: PersonContributions;
+    account_balance: number | null;
+    account_remaining: number | null;
 }
 
 
@@ -37,6 +39,8 @@ interface MonthlySummaryDisplayProps {
     summaryError: string | null;
     onSaveIncomeOverride: (value: number | null) => Promise<void>;
     incomeSaving: boolean;
+    onSaveAccountBalance: (value: number | null) => Promise<void>;
+    accountBalanceSaving: boolean;
 }
 
 // Removed COLORS constant
@@ -50,9 +54,12 @@ const MonthlySummaryDisplay: React.FC<MonthlySummaryDisplayProps> = ({
     summaryError,
     onSaveIncomeOverride,
     incomeSaving,
+    onSaveAccountBalance,
+    accountBalanceSaving,
 }) => {
     const currentYear = new Date().getFullYear(); // Still needed for years array
     const [incomeInput, setIncomeInput] = useState<string>('');
+    const [accountBalanceInput, setAccountBalanceInput] = useState<string>('');
 
     const months = Array.from({ length: 12 }, (_, i) => ({
         value: i + 1,
@@ -63,9 +70,11 @@ const MonthlySummaryDisplay: React.FC<MonthlySummaryDisplayProps> = ({
     useEffect(() => {
         if (!summary) {
             setIncomeInput('');
+            setAccountBalanceInput('');
             return;
         }
         setIncomeInput(summary.is_income_overridden ? summary.total_income.toFixed(2) : '');
+        setAccountBalanceInput(summary.account_balance !== null ? summary.account_balance.toFixed(2) : '');
     }, [summary]);
 
     // Removed pieChartData processing
@@ -157,6 +166,49 @@ const MonthlySummaryDisplay: React.FC<MonthlySummaryDisplayProps> = ({
                     <Typography variant="h5" sx={{ mt: 1 }}>
                         Saldo: <Typography component="span" fontWeight="bold" color={summary.balance >= 0 ? 'success.main' : 'error.main'}>€ {summary.balance.toFixed(2)}</Typography>
                     </Typography>
+
+                    {/* Account Balance Section */}
+                    <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #e0e0e0' }}>
+                        <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                            Saldo Conto Corrente:
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'flex-start' }}>
+                            <TextField
+                                size="small"
+                                type="number"
+                                label="Saldo Conto (€)"
+                                value={accountBalanceInput}
+                                placeholder="Non impostato"
+                                onChange={(e) => setAccountBalanceInput(e.target.value)}
+                                inputProps={{ step: '0.01', min: '0' }}
+                                helperText="Inserisci il saldo attuale del conto"
+                                fullWidth
+                            />
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                            <Button
+                                size="small"
+                                variant="contained"
+                                disabled={accountBalanceSaving}
+                                onClick={() => onSaveAccountBalance(accountBalanceInput.trim() === '' ? null : Number(accountBalanceInput))}
+                            >
+                                {accountBalanceSaving ? 'Salvataggio...' : 'Salva saldo'}
+                            </Button>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={accountBalanceSaving || summary.account_balance === null}
+                                onClick={() => onSaveAccountBalance(null)}
+                            >
+                                Cancella
+                            </Button>
+                        </Box>
+                        {summary.account_remaining !== null && (
+                            <Typography variant="h6" sx={{ mt: 1 }}>
+                                Residuo Conto: <Typography component="span" fontWeight="bold" color={summary.account_remaining >= 0 ? 'success.main' : 'error.main'}>€ {summary.account_remaining.toFixed(2)}</Typography>
+                            </Typography>
+                        )}
+                    </Box>
 
                     <Typography variant="subtitle1" sx={{ mt: 2 }}>
                         Anticipi Personali (Mese Corrente):

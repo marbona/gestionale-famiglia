@@ -138,6 +138,9 @@ def get_monthly_summary(db: Session, year: int, month: int):
             }
 
     effective_income, calculated_income, is_overridden = get_effective_monthly_income(db, year, month)
+    
+    # Get account balance and calculate remaining
+    balance_config = get_monthly_account_balance_config(db, year, month)
 
     return schemas.MonthlySummary(
         year=year,
@@ -148,7 +151,9 @@ def get_monthly_summary(db: Session, year: int, month: int):
         total_expenses=total_expenses,
         balance=effective_income - total_expenses,
         expenses_by_category=expenses_by_category,
-        person_contributions=person_contributions
+        person_contributions=person_contributions,
+        account_balance=balance_config.account_balance,
+        account_remaining=balance_config.account_remaining,
     )
 
 def get_yearly_summary(db: Session, year: int):
@@ -361,6 +366,55 @@ def get_monthly_income_config(db: Session, year: int, month: int):
         calculated_income=calculated_income,
         total_income=effective_income,
         is_overridden=is_overridden,
+    )
+
+
+def get_monthly_account_balance(db: Session, year: int, month: int):
+    """Get the account balance for a specific month"""
+    return db.query(models.MonthlyAccountBalance).filter(
+        models.MonthlyAccountBalance.year == year,
+        models.MonthlyAccountBalance.month == month,
+    ).first()
+
+
+def upsert_monthly_account_balance(db: Session, year: int, month: int, account_balance: float | None):
+    """Create or update the account balance for a specific month"""
+    existing = get_monthly_account_balance(db, year, month)
+    if account_balance is None:
+        if existing:
+            db.delete(existing)
+            db.commit()
+        return
+
+    if existing:
+        existing.account_balance = account_balance
+    else:
+        db.add(models.MonthlyAccountBalance(year=year, month=month, account_balance=account_balance))
+    db.commit()
+
+
+def get_monthly_account_balance_config(db: Session, year: int, month: int):
+    """Get account balance config including computed remaining amount"""
+    balance_record = get_monthly_account_balance(db, year, month)
+    
+    # Get total expenses for the month
+    total_expenses = db.query(func.sum(models.Transaction.amount)).filter(
+        extract('year', models.Transaction.date) == year,
+        extract('month', models.Transaction.date) == month
+    ).scalar() or 0.0
+    
+    account_balance = balance_record.account_balance if balance_record else None
+    account_remaining = None
+    
+    if account_balance is not None:
+        account_remaining = account_balance - float(total_expenses)
+    
+    return schemas.MonthlyAccountBalanceConfig(
+        year=year,
+        month=month,
+        account_balance=account_balance,
+        is_set=balance_record is not None,
+        account_remaining=account_remaining,
     )
 
 def update_app_settings(db: Session, settings: schemas.AppSettingsUpdate):

@@ -309,6 +309,33 @@ def update_monthly_income_config_endpoint(
     return crud.get_monthly_income_config(db, year, month)
 
 
+# --- Monthly Account Balance Endpoints ---
+@app.get("/api/summary/monthly-account-balance/", response_model=schemas.MonthlyAccountBalanceConfig)
+def get_monthly_account_balance_endpoint(year: int, month: int, db: Session = Depends(get_db)):
+    if month < 1 or month > 12:
+        raise HTTPException(status_code=400, detail="month must be between 1 and 12")
+    if year < 2000:
+        raise HTTPException(status_code=400, detail="year must be >= 2000")
+    return crud.get_monthly_account_balance_config(db, year, month)
+
+
+@app.put("/api/summary/monthly-account-balance/", response_model=schemas.MonthlyAccountBalanceConfig)
+def update_monthly_account_balance_endpoint(
+    year: int,
+    month: int,
+    payload: schemas.MonthlyAccountBalanceUpsert,
+    db: Session = Depends(get_db)
+):
+    if month < 1 or month > 12:
+        raise HTTPException(status_code=400, detail="month must be between 1 and 12")
+    if year < 2000:
+        raise HTTPException(status_code=400, detail="year must be >= 2000")
+    if payload.account_balance is not None and payload.account_balance < 0:
+        raise HTTPException(status_code=400, detail="account_balance must be >= 0")
+    crud.upsert_monthly_account_balance(db, year, month, payload.account_balance)
+    return crud.get_monthly_account_balance_config(db, year, month)
+
+
 # --- Large Advance Endpoints ---
 @app.post("/api/large-advances/", response_model=schemas.LargeAdvance)
 def create_large_advance_endpoint(advance: schemas.LargeAdvanceCreate, db: Session = Depends(get_db)):
